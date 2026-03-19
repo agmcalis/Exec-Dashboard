@@ -1,4 +1,9 @@
+import type { ViewContext } from '../types/wizard'
+
 export type PerformanceDirection = 'lower_better' | 'higher_better' | 'neutral'
+
+// Benchmark keys that appear in MetricSnapshot.benchmarks
+export type BenchmarkValues = Partial<Record<string, number>>
 
 export interface MetricSnapshot {
   kpiId: string
@@ -6,7 +11,7 @@ export interface MetricSnapshot {
   current: number
   prior: number
   format: 'ratio' | 'percent' | 'stars' | 'score' | 'days' | 'index' | 'currency'
-  benchmarks: Partial<Record<string, number>>
+  benchmarks: BenchmarkValues
   /** 8 quarterly values Q1'23 → Q4'24, last value matches current */
   trend: number[]
 }
@@ -473,7 +478,108 @@ export const MOCK_METRICS: MetricSnapshot[] = [
   },
 ]
 
-/** Convenience lookup by kpiId */
+/** Convenience lookup by kpiId — system-level metrics */
 export const METRIC_BY_KPI: Record<string, MetricSnapshot> = Object.fromEntries(
   MOCK_METRICS.map(m => [m.kpiId, m])
 )
+
+/** System-level metrics map (alias for getMetricsForContext convenience) */
+export const METRICS: Record<string, MetricSnapshot> = METRIC_BY_KPI
+
+// ─── KPIs where higher values = better performance ────────────────────────────
+const HIGHER_BETTER_IDS = new Set([
+  'cms_overall', 'cms_mortality', 'cms_readmission', 'cms_safety',
+  'cms_experience', 'cms_timely', 'hcahps_overall', 'hcahps_nurses',
+  'hcahps_doctors', 'hcahps_staff', 'hcahps_meds', 'hcahps_discharge',
+  'or_utilization', 'cmi',
+])
+
+/**
+ * Scale a metric snapshot by a performance factor.
+ * For lower_better KPIs: factor > 1 means worse; multiply directly.
+ * For higher_better KPIs: factor > 1 means worse; divide to invert.
+ * For neutral: multiply directly.
+ */
+function scaleMetric(base: MetricSnapshot, factor: number): MetricSnapshot {
+  const invert = HIGHER_BETTER_IDS.has(base.kpiId)
+  const effectiveFactor = invert ? (1 / factor) : factor
+  const scale = (v: number) => Math.round(v * effectiveFactor * 100) / 100
+
+  return {
+    ...base,
+    current: scale(base.current),
+    prior: scale(base.prior),
+    benchmarks: Object.fromEntries(
+      Object.entries(base.benchmarks).map(([k, v]) => [k, v !== undefined ? scale(v) : v])
+    ) as BenchmarkValues,
+    trend: base.trend.map(v => scale(v)),
+  }
+}
+
+// Hospital performance factors (factor > 1 means worse than system average)
+const HOSPITAL_FACTORS: Record<string, number> = {
+  'nhg-01': 0.92,  // academic 542 beds — better than system
+  'nhg-02': 1.05,  // community 218 beds — slightly worse
+  'nhg-03': 0.98,  // community 310 beds — near system average
+  'nhg-04': 1.14,  // critical access 48 beds — worse
+  'nhg-05': 1.02,  // community 175 beds — slightly worse
+}
+
+/** Per-hospital metric snapshots keyed by hospitalId → kpiId */
+export const HOSPITAL_METRICS: Record<string, Record<string, MetricSnapshot>> = Object.fromEntries(
+  Object.entries(HOSPITAL_FACTORS).map(([hospitalId, factor]) => [
+    hospitalId,
+    Object.fromEntries(
+      MOCK_METRICS.map(base => [base.kpiId, scaleMetric(base, factor)])
+    ),
+  ])
+)
+
+/**
+ * Get the appropriate metrics map for a given ViewContext.
+ * - system: returns system-level METRICS
+ * - hospital (single): returns that hospital's scaled metrics
+ * - group (2+ hospitals): returns averaged metrics across selected hospitals
+ */
+export function getMetricsForContext(context: ViewContext): Record<string, MetricSnapshot> {
+  if (context.type === 'system') return METRICS
+
+  if (context.type === 'hospital' && context.hospitalIds.length === 1) {
+    return HOSPITAL_METRICS[context.hospitalIds[0]] ?? METRICS
+  }
+
+  if (context.type === 'group' && context.hospitalIds.length >= 2) {
+    const selected = context.hospitalIds.map(id => HOSPITAL_METRICS[id] ?? METRICS)
+    const kpiIds = Object.keys(METRICS)
+
+    return Object.fromEntries(
+      kpiIds.map(kpiId => {
+        const snapshots = selected.map(m => m[kpiId]).filter((s): s is MetricSnapshot => s !== undefined)
+        if (!snapshots.length) return [kpiId, METRICS[kpiId]]
+
+        const avg = (arr: number[]) =>
+          Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100
+
+        const base = snapshots[0]
+        const benchmarkKeys = Object.keys(base.benchmarks)
+
+        return [kpiId, {
+          ...base,
+          current: avg(snapshots.map(s => s.current)),
+          prior: avg(snapshots.map(s => s.prior)),
+          benchmarks: Object.fromEntries(
+            benchmarkKeys.map(bk => {
+              const vals = snapshots
+                .map(s => s.benchmarks[bk])
+                .filter((v): v is number => v !== undefined)
+              return [bk, vals.length > 0 ? avg(vals) : undefined]
+            })
+          ) as BenchmarkValues,
+          trend: base.trend.map((_, i) => avg(snapshots.map(s => s.trend[i]))),
+        }]
+      })
+    )
+  }
+
+  return METRICS
+}

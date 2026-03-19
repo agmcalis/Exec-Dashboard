@@ -1,13 +1,14 @@
-import type { Hospital } from '../data/facilities'
+export type ContextType = 'system' | 'hospital' | 'group'
 
-export type ViewLevel = 'system' | 'hospital' | 'group'
+export interface ViewContext {
+  type: ContextType
+  hospitalIds: string[] // empty for system; one id for hospital; 2+ for group
+}
+
+export const DEFAULT_CONTEXT: ViewContext = { type: 'system', hospitalIds: [] }
 
 export interface WizardState {
-  step: 1 | 2 | 3
-  level: ViewLevel | null
-  // For 'hospital': single hospital id
-  // For 'group': multiple hospital ids
-  selectedHospitalIds: string[]
+  step: 1 | 2
   selectedKpiIds: string[]
   selectedBenchmarkIds: string[]
   viewName: string
@@ -16,8 +17,6 @@ export interface WizardState {
 export interface SavedView {
   id: string
   name: string
-  level: ViewLevel
-  selectedHospitalIds: string[]
   selectedKpiIds: string[]
   selectedBenchmarkIds: string[]
   createdAt: number
@@ -25,8 +24,6 @@ export interface SavedView {
 
 export const INITIAL_WIZARD_STATE: WizardState = {
   step: 1,
-  level: null,
-  selectedHospitalIds: [],
   selectedKpiIds: [],
   selectedBenchmarkIds: [],
   viewName: '',
@@ -34,27 +31,6 @@ export const INITIAL_WIZARD_STATE: WizardState = {
 
 export const STORAGE_KEY = 'exec_dashboard_views'
 
-export function generateViewName(wizard: WizardState, hospitals: Hospital[]): string {
-  if (wizard.level === 'system') {
-    return 'Health System'
-  }
-
-  if (wizard.level === 'hospital') {
-    const hospital = hospitals.find(h => h.id === wizard.selectedHospitalIds[0])
-    return hospital?.name ?? 'Single Hospital'
-  }
-
-  if (wizard.level === 'group') {
-    const count = wizard.selectedHospitalIds.length
-    if (count === 0) return 'Hospital Group'
-    if (count === 1) {
-      const hospital = hospitals.find(h => h.id === wizard.selectedHospitalIds[0])
-      return hospital?.name ?? 'Single Hospital'
-    }
-    const first = hospitals.find(h => h.id === wizard.selectedHospitalIds[0])
-    const firstName = first?.name ?? 'Hospital'
-    return `${firstName} + ${count - 1} more`
-  }
-
-  return 'New View'
+export function generateViewName(index: number): string {
+  return `View ${index + 1}`
 }

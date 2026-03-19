@@ -1,12 +1,9 @@
-import type { ViewLevel } from '../types/wizard'
-
 export interface BenchmarkDef {
   id: string
   name: string
   description: string
   source: string
   tag: string
-  scopeExclude?: ViewLevel[]
 }
 
 export const BENCHMARK_DEFS: BenchmarkDef[] = [
@@ -51,6 +48,5 @@ export const BENCHMARK_DEFS: BenchmarkDef[] = [
     description: 'The aggregate average across all hospitals in your health system — useful for internal comparisons.',
     source: 'Internal',
     tag: 'Internal',
-    scopeExclude: ['system'],
   },
 ]

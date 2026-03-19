@@ -11,13 +11,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { SavedView } from '../types/wizard'
+import type { SavedView, ViewContext } from '../types/wizard'
 import { KPI_DEFS, KPI_CATEGORIES } from '../data/kpis'
 import type { KpiDef } from '../data/kpis'
 import { BENCHMARK_DEFS } from '../data/benchmarks'
 import type { BenchmarkDef } from '../data/benchmarks'
 import { HEALTH_SYSTEM } from '../data/facilities'
-import { METRIC_BY_KPI } from '../data/mockMetrics'
+import { getMetricsForContext } from '../data/mockMetrics'
 import type { MetricSnapshot, PerformanceDirection } from '../data/mockMetrics'
 import ViewTabs from '../components/layout/ViewTabs'
 import KpiManageModal from '../components/KpiManageModal'
@@ -198,9 +198,10 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, delay }: KpiCardProps)
 interface CardContentProps {
   grouped: GroupedCategory[]
   selectedBenchmarkIds: string[]
+  metricsMap: Record<string, MetricSnapshot>
 }
 
-function CardContent({ grouped, selectedBenchmarkIds }: CardContentProps) {
+function CardContent({ grouped, selectedBenchmarkIds, metricsMap }: CardContentProps) {
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
@@ -223,7 +224,7 @@ function CardContent({ grouped, selectedBenchmarkIds }: CardContentProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {group.kpis.map((kpi, cardIndex) => {
-                const metric = METRIC_BY_KPI[kpi.id]
+                const metric = metricsMap[kpi.id]
                 if (!metric) return null
 
                 const cardDelay = sectionDelay + cardIndex * 0.04
@@ -252,11 +253,12 @@ interface TableViewProps {
   grouped: GroupedCategory[]
   selectedBenchmarkIds: string[]
   benchmarkDefs: BenchmarkDef[]
+  metricsMap: Record<string, MetricSnapshot>
 }
 
 type SortState = { col: string; dir: 'asc' | 'desc' }
 
-function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs }: TableViewProps) {
+function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }: TableViewProps) {
   const [sort, setSort] = useState<SortState>({ col: 'name', dir: 'asc' })
 
   function handleHeaderClick(col: string) {
@@ -269,8 +271,8 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs }: TableViewPr
 
   function sortKpis(kpis: KpiDef[]): KpiDef[] {
     return [...kpis].sort((a, b) => {
-      const ma = METRIC_BY_KPI[a.id]
-      const mb = METRIC_BY_KPI[b.id]
+      const ma = metricsMap[a.id]
+      const mb = metricsMap[b.id]
       if (!ma || !mb) return 0
 
       let diff = 0
@@ -365,7 +367,7 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs }: TableViewPr
                   </tr>
 
                   {sortedKpis.map((kpi, rowIndex) => {
-                    const metric = METRIC_BY_KPI[kpi.id]
+                    const metric = metricsMap[kpi.id]
                     if (!metric) return null
 
                     const delta = metric.current - metric.prior
@@ -474,6 +476,7 @@ const QUARTER_LABELS = ["Q1'23", "Q2'23", "Q3'23", "Q4'23", "Q1'24", "Q2'24", "Q
 interface TrendViewProps {
   grouped: GroupedCategory[]
   selectedBenchmarkIds: string[]
+  metricsMap: Record<string, MetricSnapshot>
 }
 
 interface TrendTooltipPayload {
@@ -504,7 +507,7 @@ function TrendTooltipContent({ active, payload, format }: TrendTooltipProps) {
   )
 }
 
-function TrendView({ grouped, selectedBenchmarkIds }: TrendViewProps) {
+function TrendView({ grouped, selectedBenchmarkIds, metricsMap }: TrendViewProps) {
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
@@ -527,7 +530,7 @@ function TrendView({ grouped, selectedBenchmarkIds }: TrendViewProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {group.kpis.map((kpi, cardIndex) => {
-                const metric = METRIC_BY_KPI[kpi.id]
+                const metric = metricsMap[kpi.id]
                 if (!metric) return null
 
                 const cardDelay = sectionDelay + cardIndex * 0.04
@@ -627,28 +630,22 @@ function TrendView({ grouped, selectedBenchmarkIds }: TrendViewProps) {
 // ─── ViewContextBar ───────────────────────────────────────────────────────────
 
 interface ViewContextBarProps {
-  view: SavedView
+  context: ViewContext
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onManageKpis: () => void
 }
 
-function ViewContextBar({ view, viewMode, onViewModeChange, onManageKpis }: ViewContextBarProps) {
-  let scopeLabel = ''
-  let scopeBadge = ''
+function ViewContextBar({ context, viewMode, onViewModeChange, onManageKpis }: ViewContextBarProps) {
+  let contextLabel = ''
 
-  if (view.level === 'system') {
-    scopeLabel = HEALTH_SYSTEM.name
-    scopeBadge = 'Health System'
-  } else if (view.level === 'hospital') {
-    const hospital = HEALTH_SYSTEM.hospitals.find(
-      h => h.id === view.selectedHospitalIds[0]
-    )
-    scopeLabel = hospital?.name ?? 'Hospital'
-    scopeBadge = 'Single Hospital'
-  } else if (view.level === 'group') {
-    scopeLabel = `${view.selectedHospitalIds.length} Hospitals`
-    scopeBadge = 'Hospital Group'
+  if (context.type === 'system') {
+    contextLabel = `${HEALTH_SYSTEM.name} · Health System`
+  } else if (context.type === 'hospital' && context.hospitalIds.length === 1) {
+    const hospital = HEALTH_SYSTEM.hospitals.find(h => h.id === context.hospitalIds[0])
+    contextLabel = hospital?.name ?? 'Hospital'
+  } else if (context.type === 'group') {
+    contextLabel = `Custom Group · ${context.hospitalIds.length} hospital${context.hospitalIds.length !== 1 ? 's' : ''}`
   }
 
   const modes: { id: ViewMode; label: string; Icon: LucideIcon }[] = [
@@ -660,10 +657,7 @@ function ViewContextBar({ view, viewMode, onViewModeChange, onManageKpis }: View
   return (
     <div className="bg-surface border-b border-border px-6 py-2.5 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-2.5">
-        <span className="text-sm font-semibold text-white">{scopeLabel}</span>
-        <span className="text-[10px] font-semibold text-slate-500 bg-surface-2 border border-border px-2 py-0.5 rounded-full uppercase tracking-wide">
-          {scopeBadge}
-        </span>
+        <span className="text-sm font-semibold text-white">{contextLabel}</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -704,6 +698,7 @@ function ViewContextBar({ view, viewMode, onViewModeChange, onManageKpis }: View
 interface DashboardViewProps {
   view: SavedView
   views: SavedView[]
+  context: ViewContext
   activeViewId: string | null
   onSelectView: (id: string) => void
   onNewView: () => void
@@ -714,6 +709,7 @@ interface DashboardViewProps {
 export default function DashboardView({
   view,
   views,
+  context,
   activeViewId,
   onSelectView,
   onNewView,
@@ -722,6 +718,9 @@ export default function DashboardView({
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [isManageKpisOpen, setIsManageKpisOpen] = useState(false)
+
+  // Get metrics for the current context (system / hospital / group)
+  const metricsMap = getMetricsForContext(context)
 
   // Filter to selected KPIs only
   const selectedKpiDefs = KPI_DEFS.filter(k => view.selectedKpiIds.includes(k.id))
@@ -749,7 +748,7 @@ export default function DashboardView({
 
       {/* Context / scope bar */}
       <ViewContextBar
-        view={view}
+        context={context}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onManageKpis={() => setIsManageKpisOpen(true)}
@@ -774,6 +773,7 @@ export default function DashboardView({
               <CardContent
                 grouped={grouped}
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
+                metricsMap={metricsMap}
               />
             )}
             {viewMode === 'table' && (
@@ -781,12 +781,14 @@ export default function DashboardView({
                 grouped={grouped}
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
                 benchmarkDefs={BENCHMARK_DEFS}
+                metricsMap={metricsMap}
               />
             )}
             {viewMode === 'trend' && (
               <TrendView
                 grouped={grouped}
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
+                metricsMap={metricsMap}
               />
             )}
           </>

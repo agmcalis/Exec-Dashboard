@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, X } from 'lucide-react'
-import type { SavedView, ViewLevel } from '../../types/wizard'
+import type { SavedView } from '../../types/wizard'
 
 interface ViewTabsProps {
   views: SavedView[]
@@ -8,14 +8,6 @@ interface ViewTabsProps {
   onSelect: (id: string) => void
   onNew: () => void
   onDelete: (id: string) => void
-}
-
-function levelLabel(level: ViewLevel): string {
-  switch (level) {
-    case 'system':  return 'System'
-    case 'hospital': return 'Hospital'
-    case 'group':   return 'Group'
-  }
 }
 
 export default function ViewTabs({ views, activeViewId, onSelect, onNew, onDelete }: ViewTabsProps) {
@@ -39,12 +31,7 @@ export default function ViewTabs({ views, activeViewId, onSelect, onNew, onDelet
               onClick={() => onSelect(view.id)}
             >
               {/* Tab label */}
-              <span className="max-w-[140px] truncate">{view.name}</span>
-
-              {/* Level badge */}
-              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-surface-3 text-slate-400 shrink-0">
-                {levelLabel(view.level)}
-              </span>
+              <span className="max-w-[160px] truncate">{view.name}</span>
 
               {/* Delete button — only when multiple views exist */}
               {views.length > 1 && (
