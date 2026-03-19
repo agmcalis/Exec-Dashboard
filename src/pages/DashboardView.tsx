@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon } from 'lucide-react'
+import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { WizardState } from '../types/wizard'
+import type { SavedView } from '../types/wizard'
 import { KPI_DEFS, KPI_CATEGORIES } from '../data/kpis'
 import type { KpiDef } from '../data/kpis'
 import { BENCHMARK_DEFS } from '../data/benchmarks'
@@ -19,6 +19,8 @@ import type { BenchmarkDef } from '../data/benchmarks'
 import { HEALTH_SYSTEM } from '../data/facilities'
 import { METRIC_BY_KPI } from '../data/mockMetrics'
 import type { MetricSnapshot, PerformanceDirection } from '../data/mockMetrics'
+import ViewTabs from '../components/layout/ViewTabs'
+import KpiManageModal from '../components/KpiManageModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -625,27 +627,27 @@ function TrendView({ grouped, selectedBenchmarkIds }: TrendViewProps) {
 // ─── ViewContextBar ───────────────────────────────────────────────────────────
 
 interface ViewContextBarProps {
-  wizard: WizardState
-  onNewView: () => void
+  view: SavedView
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
+  onManageKpis: () => void
 }
 
-function ViewContextBar({ wizard, onNewView, viewMode, onViewModeChange }: ViewContextBarProps) {
+function ViewContextBar({ view, viewMode, onViewModeChange, onManageKpis }: ViewContextBarProps) {
   let scopeLabel = ''
   let scopeBadge = ''
 
-  if (wizard.level === 'system') {
+  if (view.level === 'system') {
     scopeLabel = HEALTH_SYSTEM.name
     scopeBadge = 'Health System'
-  } else if (wizard.level === 'hospital') {
+  } else if (view.level === 'hospital') {
     const hospital = HEALTH_SYSTEM.hospitals.find(
-      h => h.id === wizard.selectedHospitalIds[0]
+      h => h.id === view.selectedHospitalIds[0]
     )
     scopeLabel = hospital?.name ?? 'Hospital'
     scopeBadge = 'Single Hospital'
-  } else if (wizard.level === 'group') {
-    scopeLabel = `${wizard.selectedHospitalIds.length} Hospitals`
+  } else if (view.level === 'group') {
+    scopeLabel = `${view.selectedHospitalIds.length} Hospitals`
     scopeBadge = 'Hospital Group'
   }
 
@@ -664,47 +666,65 @@ function ViewContextBar({ wizard, onNewView, viewMode, onViewModeChange }: ViewC
         </span>
       </div>
 
-      {/* View mode segmented control */}
-      <div className="flex items-center bg-surface-2 rounded-lg p-0.5 gap-0.5">
-        {modes.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => onViewModeChange(id)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all ${
-              viewMode === id
-                ? 'bg-surface-3 text-white'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            <Icon size={12} strokeWidth={2} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <div className="flex items-center gap-2">
+        {/* Manage KPIs button */}
+        <button
+          onClick={onManageKpis}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white border border-border hover:border-border-hi bg-transparent hover:bg-surface-2 px-3 py-1.5 rounded-lg transition-all duration-150"
+          aria-label="Manage KPIs"
+        >
+          <Settings2 size={12} strokeWidth={2} />
+          Manage KPIs
+        </button>
 
-      <button
-        onClick={onNewView}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white border border-border hover:border-border-hi bg-transparent hover:bg-surface-2 px-3 py-1.5 rounded-lg transition-all duration-150"
-      >
-        <Plus size={12} strokeWidth={2.5} />
-        New View
-      </button>
+        {/* View mode segmented control */}
+        <div className="flex items-center bg-surface-2 rounded-lg p-0.5 gap-0.5">
+          {modes.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => onViewModeChange(id)}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all ${
+                viewMode === id
+                  ? 'bg-surface-3 text-white'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <Icon size={12} strokeWidth={2} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
 // ─── DashboardView ────────────────────────────────────────────────────────────
 
-interface Props {
-  wizard: WizardState
+interface DashboardViewProps {
+  view: SavedView
+  views: SavedView[]
+  activeViewId: string | null
+  onSelectView: (id: string) => void
   onNewView: () => void
+  onUpdateView: (viewId: string, updates: Partial<SavedView>) => void
+  onDeleteView: (viewId: string) => void
 }
 
-export default function DashboardView({ wizard, onNewView }: Props) {
+export default function DashboardView({
+  view,
+  views,
+  activeViewId,
+  onSelectView,
+  onNewView,
+  onUpdateView,
+  onDeleteView,
+}: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
+  const [isManageKpisOpen, setIsManageKpisOpen] = useState(false)
 
   // Filter to selected KPIs only
-  const selectedKpiDefs = KPI_DEFS.filter(k => wizard.selectedKpiIds.includes(k.id))
+  const selectedKpiDefs = KPI_DEFS.filter(k => view.selectedKpiIds.includes(k.id))
 
   // Group by category, preserving KPI_CATEGORIES order
   const grouped: GroupedCategory[] = KPI_CATEGORIES.map(cat => ({
@@ -712,45 +732,75 @@ export default function DashboardView({ wizard, onNewView }: Props) {
     kpis: selectedKpiDefs.filter(k => k.category === cat.id),
   })).filter(g => g.kpis.length > 0)
 
+  function handleSaveKpis(newIds: string[]) {
+    onUpdateView(view.id, { selectedKpiIds: newIds })
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Tab strip */}
+      <ViewTabs
+        views={views}
+        activeViewId={activeViewId}
+        onSelect={onSelectView}
+        onNew={onNewView}
+        onDelete={onDeleteView}
+      />
+
+      {/* Context / scope bar */}
       <ViewContextBar
-        wizard={wizard}
-        onNewView={onNewView}
+        view={view}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        onManageKpis={() => setIsManageKpisOpen(true)}
       />
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {selectedKpiDefs.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center h-full gap-3">
             <p className="text-slate-500 text-sm">No metrics selected.</p>
+            <button
+              onClick={() => setIsManageKpisOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-premier hover:text-premier-hover transition-colors"
+            >
+              <Settings2 size={12} strokeWidth={2} />
+              Manage KPIs
+            </button>
           </div>
         ) : (
           <>
             {viewMode === 'card' && (
               <CardContent
                 grouped={grouped}
-                selectedBenchmarkIds={wizard.selectedBenchmarkIds}
+                selectedBenchmarkIds={view.selectedBenchmarkIds}
               />
             )}
             {viewMode === 'table' && (
               <TableView
                 grouped={grouped}
-                selectedBenchmarkIds={wizard.selectedBenchmarkIds}
+                selectedBenchmarkIds={view.selectedBenchmarkIds}
                 benchmarkDefs={BENCHMARK_DEFS}
               />
             )}
             {viewMode === 'trend' && (
               <TrendView
                 grouped={grouped}
-                selectedBenchmarkIds={wizard.selectedBenchmarkIds}
+                selectedBenchmarkIds={view.selectedBenchmarkIds}
               />
             )}
           </>
         )}
       </div>
+
+      {/* KPI management modal */}
+      {isManageKpisOpen && (
+        <KpiManageModal
+          view={view}
+          onClose={() => setIsManageKpisOpen(false)}
+          onSave={handleSaveKpis}
+        />
+      )}
     </div>
   )
 }
