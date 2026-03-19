@@ -11,7 +11,13 @@
       "Bash(npx tailwindcss:*)",
       "Bash(node_modules/.bin/tailwindcss init:*)",
       "Bash(node_modules/.bin/tsc --noEmit)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(rm -f \"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\")",
+      "Bash(bash -c 'cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && GIT_DIR=\"\".git\"\" git add src/ && git commit -m \"\"Refactor scope to global side nav context switcher:*)",
+      "Bash(npm run:*)",
+      "Bash(rm \"/Users/andrew/Claude/Exec Dashboard/src/pages/wizard/Step1Level.tsx\")",
+      "Bash(rm \"/Users/andrew/Claude/Exec Dashboard/src/pages/wizard/Step3Benchmarks.tsx\")",
+      "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add -A && git commit -m \"\"Remove stale Step1Level and Step3Benchmarks causing build errors:*)"
     ]
   }
 }
