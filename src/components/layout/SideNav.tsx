@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Building2, Stethoscope, Layers, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react'
+import { Network, Building2, Layers, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { HEALTH_SYSTEM } from '../../data/facilities'
 import type { ViewContext } from '../../types/wizard'
@@ -91,7 +91,7 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
               !isOpen && 'justify-center w-9 h-9 px-0 py-0 border-l-0'
             )}
           >
-            <Building2
+            <Network
               size={16}
               strokeWidth={2}
               className={cn(
@@ -179,7 +179,7 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
                       : 'text-slate-400 hover:text-slate-200 hover:bg-surface-2'
                   )}
                 >
-                  <Stethoscope
+                  <Building2
                     size={13}
                     strokeWidth={2}
                     className={cn(
