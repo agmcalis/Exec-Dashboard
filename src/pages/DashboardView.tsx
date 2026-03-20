@@ -148,10 +148,22 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay, onC
       transition={{ duration: 0.3, delay, ease: [0.4, 0, 0.2, 1] }}
       className={`relative group bg-surface border border-border rounded-2xl p-5 flex flex-col gap-3 ${borderClass}`}
     >
-      {/* Top — KPI name */}
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-none">
-        {kpiName}
-      </p>
+      {/* Top — KPI name + task button */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-none">
+          {kpiName}
+        </p>
+        {onCreateTask && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onCreateTask(metric.kpiId) }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier shrink-0"
+            title="Create task"
+          >
+            <Flag size={11} strokeWidth={2} />
+            Task
+          </button>
+        )}
+      </div>
 
       {/* Middle — value + delta */}
       <div className="flex items-end gap-3">
@@ -203,17 +215,6 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay, onC
         </div>
       )}
 
-      {/* Create task button — appears on hover */}
-      {onCreateTask && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onCreateTask(metric.kpiId) }}
-          className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier"
-          title="Create task"
-        >
-          <Flag size={11} strokeWidth={2} />
-          Task
-        </button>
-      )}
     </motion.div>
   )
 }
