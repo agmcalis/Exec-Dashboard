@@ -116,16 +116,19 @@ export default function TaskDetailModal({
   }
 
   // Merge into chart data
+  // Bridge: the last historical point carries both `actual` and `projected` so the
+  // two lines visually connect with no gap.
+  const lastHistVal = historicalTrend[historicalTrend.length - 1]
   const chartData: { quarter: string; actual?: number; projected?: number }[] = [
-    ...historicalTrend.map((v, i) => ({
-      quarter: historyQuarters[i] ?? `Q${i}`,
-      actual: v,
-    })),
-    // Transition point — last historical value starts the projected line
-    ...(projectedPoints.length > 0
-      ? [{ quarter: projectedPoints[0].quarter, actual: undefined, projected: historicalTrend[historicalTrend.length - 1] }]
-      : []),
-    ...projectedPoints.slice(1).map(p => ({ quarter: p.quarter, projected: p.projected })),
+    ...historicalTrend.map((v, i) => {
+      const isLast = i === historicalTrend.length - 1
+      return {
+        quarter: historyQuarters[i] ?? `Q${i}`,
+        actual: v,
+        projected: isLast && projectedPoints.length > 0 ? lastHistVal : undefined,
+      }
+    }),
+    ...projectedPoints.map(p => ({ quarter: p.quarter, projected: p.projected })),
   ]
 
   // AI insight
