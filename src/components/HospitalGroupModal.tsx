@@ -26,7 +26,7 @@ function hospitalTypeBadgeClass(type: string): string {
     case 'academic':
       return 'bg-premier-muted text-premier border border-premier/20'
     case 'critical_access':
-      return 'bg-amber-950/40 text-amber-400 border border-amber-800/30'
+      return 'bg-surface-3 text-slate-400 border border-border'
     default:
       return 'bg-surface-3 text-slate-400 border border-border'
   }
