@@ -5,6 +5,7 @@ import TopBar from './components/layout/TopBar'
 import SideNav from './components/layout/SideNav'
 import EmptyState from './pages/EmptyState'
 import DashboardView from './pages/DashboardView'
+import CompareModal from './pages/CompareModal'
 import HospitalGroupModal from './components/HospitalGroupModal'
 import SharedWithMePanel from './components/sharing/SharedWithMePanel'
 import TasksView from './pages/tasks/TasksView'
@@ -13,6 +14,7 @@ import { useAppStore, getSharedWithMe, isViewAlreadyAdded } from './store/appSto
 import type { ViewConfig } from './store/appStore'
 import { useTasksStore } from './store/tasksStore'
 import { MOCK_USERS } from './data/mockUsers'
+import { HEALTH_SYSTEM } from './data/facilities'
 import { KPI_CATEGORIES, KPI_DEFS } from './data/kpis'
 import type { KpiCategory } from './data/kpis'
 import { BENCHMARK_DEFS } from './data/benchmarks'
@@ -402,6 +404,7 @@ export default function App() {
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
   const [mainView, setMainView] = useState<'dashboard' | 'tasks'>('dashboard')
   const [createTaskKpiId, setCreateTaskKpiId] = useState<string | null | undefined>(undefined)
+  const [compareModal, setCompareModal] = useState<{ kpiId: string; kpiName: string } | null>(null)
 
   // Keep activeViewId in sync when views or currentUser change
   useEffect(() => {
@@ -516,6 +519,15 @@ export default function App() {
   const activeView = views.find(v => v.id === activeViewId)
   const phase = views.length === 0 ? 'empty' : 'dashboard'
 
+  const isMultiHospital = context.type === 'system' ||
+    (context.type === 'group' && context.hospitalIds.length > 1)
+
+  const compareHospitalIds: string[] = context.type === 'system'
+    ? HEALTH_SYSTEM.hospitals.map(h => h.id)
+    : context.type === 'group'
+      ? context.hospitalIds
+      : []
+
   return (
     <div className="flex flex-col h-screen bg-bg overflow-hidden">
       <TopBar currentUser={currentUser} onUserChange={handleUserChange} />
@@ -570,6 +582,9 @@ export default function App() {
                     onShareView={handleShareView}
                     currentUser={currentUser}
                     onCreateTask={handleCreateTaskFromKpiCard}
+                    isMultiHospital={isMultiHospital}
+                    compareHospitalIds={compareHospitalIds}
+                    onCompare={(kpiId, kpiName) => setCompareModal({ kpiId, kpiName })}
                   />
                 )}
                 {mainView === 'tasks' && (
@@ -619,6 +634,19 @@ export default function App() {
             onSave={(task) => { addTask(task); setCreateTaskKpiId(undefined) }}
             currentUserId={currentUserId}
             prefillKpiId={createTaskKpiId}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Compare Modal */}
+      <AnimatePresence>
+        {compareModal && (
+          <CompareModal
+            open={true}
+            onClose={() => setCompareModal(null)}
+            kpiId={compareModal.kpiId}
+            kpiName={compareModal.kpiName}
+            hospitalIds={compareHospitalIds}
           />
         )}
       </AnimatePresence>

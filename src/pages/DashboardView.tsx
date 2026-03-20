@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown, Share2, Lock, Flag } from 'lucide-react'
+import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown, Share2, Lock, Flag, GitCompareArrows } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -105,9 +105,11 @@ interface KpiCardProps {
   timePeriod: TimePeriod
   delay: number
   onCreateTask?: (kpiId: string) => void
+  isMultiHospital?: boolean
+  onCompare?: (kpiId: string, kpiName: string) => void
 }
 
-function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay, onCreateTask }: KpiCardProps) {
+function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay, onCreateTask, isMultiHospital, onCompare }: KpiCardProps) {
   const { current, prior, periodLabel } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
   const borderClass = getCardBorderClass(current, metric, selectedBenchmarkIds)
 
@@ -148,21 +150,33 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay, onC
       transition={{ duration: 0.3, delay, ease: [0.4, 0, 0.2, 1] }}
       className={`relative group bg-surface border border-border rounded-2xl p-5 flex flex-col gap-3 ${borderClass}`}
     >
-      {/* Top — KPI name + task button */}
+      {/* Top — KPI name + compare + task button */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-none">
           {kpiName}
         </p>
-        {onCreateTask && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onCreateTask(metric.kpiId) }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier shrink-0"
-            title="Create task"
-          >
-            <Flag size={11} strokeWidth={2} />
-            Task
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {isMultiHospital && onCompare && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onCompare(metric.kpiId, kpiName) }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier"
+              title="Compare hospitals"
+            >
+              <GitCompareArrows size={11} strokeWidth={2} />
+              Compare
+            </button>
+          )}
+          {onCreateTask && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onCreateTask(metric.kpiId) }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier"
+              title="Create task"
+            >
+              <Flag size={11} strokeWidth={2} />
+              Task
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Middle — value + delta */}
@@ -227,9 +241,11 @@ interface CardContentProps {
   metricsMap: Record<string, MetricSnapshot>
   timePeriod: TimePeriod
   onCreateTask?: (kpiId: string) => void
+  isMultiHospital?: boolean
+  onCompare?: (kpiId: string, kpiName: string) => void
 }
 
-function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod, onCreateTask }: CardContentProps) {
+function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod, onCreateTask, isMultiHospital, onCompare }: CardContentProps) {
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
@@ -266,6 +282,8 @@ function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod, on
                     timePeriod={timePeriod}
                     delay={cardDelay}
                     onCreateTask={onCreateTask}
+                    isMultiHospital={isMultiHospital}
+                    onCompare={onCompare}
                   />
                 )
               })}
@@ -285,11 +303,13 @@ interface TableViewProps {
   benchmarkDefs: BenchmarkDef[]
   metricsMap: Record<string, MetricSnapshot>
   timePeriod: TimePeriod
+  isMultiHospital?: boolean
+  onCompare?: (kpiId: string, kpiName: string) => void
 }
 
 type SortState = { col: string; dir: 'asc' | 'desc' }
 
-function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, timePeriod }: TableViewProps) {
+function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, timePeriod, isMultiHospital, onCompare }: TableViewProps) {
   const [sort, setSort] = useState<SortState>({ col: 'name', dir: 'asc' })
 
   function handleHeaderClick(col: string) {
@@ -332,7 +352,7 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, t
     return <span className="ml-1 opacity-70">{sort.dir === 'asc' ? '↑' : '↓'}</span>
   }
 
-  const colCount = 3 + selectedBenchmarkIds.length
+  const colCount = 3 + selectedBenchmarkIds.length + (isMultiHospital ? 1 : 0)
 
   return (
     <div className="px-6 py-6">
@@ -375,6 +395,11 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, t
                   </th>
                 )
               })}
+              {isMultiHospital && (
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider select-none">
+                  Compare
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -494,6 +519,22 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, t
                             </td>
                           )
                         })}
+
+                        {/* Compare action column */}
+                        {isMultiHospital && (
+                          <td className="py-3 px-4">
+                            {onCompare && (
+                              <button
+                                onClick={() => onCompare(kpi.id, kpi.name)}
+                                className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier transition-colors"
+                                title="Compare hospitals"
+                              >
+                                <GitCompareArrows size={11} strokeWidth={2} />
+                                Compare
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
@@ -1038,6 +1079,9 @@ interface DashboardViewProps {
   onShareView: (viewId: string, sharedWith: 'all' | string[]) => void
   currentUser: MockUser
   onCreateTask?: (kpiId: string) => void
+  isMultiHospital?: boolean
+  compareHospitalIds?: string[]
+  onCompare?: (kpiId: string, kpiName: string) => void
 }
 
 export default function DashboardView({
@@ -1053,6 +1097,8 @@ export default function DashboardView({
   onShareView,
   currentUser,
   onCreateTask,
+  isMultiHospital,
+  onCompare,
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [timePeriod, setTimePeriod] = useState<TimePeriod>(DEFAULT_TIME_PERIOD)
@@ -1157,6 +1203,8 @@ export default function DashboardView({
                 metricsMap={metricsMap}
                 timePeriod={timePeriod}
                 onCreateTask={onCreateTask}
+                isMultiHospital={isMultiHospital}
+                onCompare={onCompare}
               />
             )}
             {viewMode === 'table' && (
@@ -1166,6 +1214,8 @@ export default function DashboardView({
                 benchmarkDefs={BENCHMARK_DEFS}
                 metricsMap={metricsMap}
                 timePeriod={timePeriod}
+                isMultiHospital={isMultiHospital}
+                onCompare={onCompare}
               />
             )}
             {viewMode === 'trend' && (

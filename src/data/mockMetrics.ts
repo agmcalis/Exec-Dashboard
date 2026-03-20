@@ -14,6 +14,8 @@ export interface MetricSnapshot {
   benchmarks: BenchmarkValues
   /** 24 quarterly values Q1'20 → Q4'25, last value matches current */
   rawTrend: number[]
+  /** Per-hospital breakdown for comparison view */
+  byHospital: Record<string, number>
 }
 
 export const MOCK_METRICS: MetricSnapshot[] = [
@@ -28,6 +30,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       0.98, 0.96, 0.94, 0.93, 0.95, 0.91, 0.89, 0.87, 0.85, 0.84, 0.84, 0.83,
     ],
     benchmarks: { national_avg: 1.00, premier_peer: 0.91, state_avg: 0.94, top_decile: 0.72 },
+    byHospital: { 'nhg-01': 0.76, 'nhg-02': 0.81, 'nhg-03': 0.85, 'nhg-04': 0.98, 'nhg-05': 0.87 },
   },
   {
     kpiId: 'mortality_30d_hf',
@@ -39,6 +42,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       11.4, 11.2, 11.0, 11.0, 10.9, 10.8, 10.8, 10.8, 11.0, 10.8, 10.8, 10.7,
     ],
     benchmarks: { national_avg: 12.4, premier_peer: 11.9, state_avg: 12.1, top_decile: 9.8 },
+    byHospital: { 'nhg-01': 8.7, 'nhg-02': 9.7, 'nhg-03': 10.7, 'nhg-04': 13.7, 'nhg-05': 11.7 },
   },
   {
     kpiId: 'mortality_30d_stroke',
@@ -50,6 +54,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       16.8, 16.4, 16.2, 16.2, 16.0, 15.8, 15.5, 15.3, 14.6, 14.4, 14.4, 13.8,
     ],
     benchmarks: { national_avg: 15.1, premier_peer: 14.7, state_avg: 14.9, top_decile: 12.5 },
+    byHospital: { 'nhg-01': 11.8, 'nhg-02': 12.8, 'nhg-03': 13.8, 'nhg-04': 16.8, 'nhg-05': 14.8 },
   },
   {
     kpiId: 'mortality_30d_cardiac',
@@ -61,6 +66,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       3.6, 3.5, 3.5, 3.4, 3.4, 3.4, 3.4, 3.4, 3.7, 3.6, 3.6, 3.6,
     ],
     benchmarks: { national_avg: 4.2, premier_peer: 4.0, state_avg: 4.1, top_decile: 3.1 },
+    byHospital: { 'nhg-01': 1.6, 'nhg-02': 2.6, 'nhg-03': 3.6, 'nhg-04': 6.6, 'nhg-05': 4.6 },
   },
 
   // ── Patient Safety ────────────────────────────────────────────────────────
@@ -74,6 +80,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.12, 1.10, 1.09, 1.08, 1.06, 1.05, 1.06, 1.08, 1.10, 1.09, 1.08, 1.08,
     ],
     benchmarks: { national_avg: 1.00, premier_peer: 1.05, state_avg: 1.07, top_decile: 0.79 },
+    byHospital: { 'nhg-01': 1.02, 'nhg-02': 1.08, 'nhg-03': 1.13, 'nhg-04': 1.31, 'nhg-05': 1.17 },
   },
   {
     kpiId: 'psi_03',
@@ -85,6 +92,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.3, 1.2, 1.2, 1.1, 1.1, 1.0, 1.0, 1.0, 0.9, 0.9, 0.8, 0.8,
     ],
     benchmarks: { national_avg: 0.49, premier_peer: 0.45, state_avg: 0.47, top_decile: 0.28 },
+    byHospital: { 'nhg-01': 0.35, 'nhg-02': 0.37, 'nhg-03': 0.39, 'nhg-04': 0.45, 'nhg-05': 0.40 },
   },
   {
     kpiId: 'psi_04',
@@ -96,6 +104,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       0.85, 0.82, 0.80, 0.79, 0.78, 0.76, 0.74, 0.72, 0.70, 0.68, 0.66, 0.64,
     ],
     benchmarks: { national_avg: 97.3, premier_peer: 92.5, state_avg: 94.8, top_decile: 71.2 },
+    byHospital: { 'nhg-01': 77.46, 'nhg-02': 81.67, 'nhg-03': 85.88, 'nhg-04': 99.36, 'nhg-05': 88.41 },
   },
   {
     kpiId: 'psi_11',
@@ -107,6 +116,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       2.2, 2.1, 2.0, 1.9, 1.8, 1.8, 1.7, 1.7, 1.6, 1.5, 1.5, 1.4,
     ],
     benchmarks: { national_avg: 9.8, premier_peer: 9.3, state_avg: 9.5, top_decile: 6.8 },
+    byHospital: { 'nhg-01': 7.36, 'nhg-02': 7.76, 'nhg-03': 8.16, 'nhg-04': 9.44, 'nhg-05': 8.40 },
   },
 
   // ── Efficiency ────────────────────────────────────────────────────────────
@@ -120,6 +130,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.03, 1.02, 1.01, 1.00, 0.99, 0.98, 0.97, 0.96, 0.96, 0.96, 0.95, 0.94,
     ],
     benchmarks: { national_avg: 1.00, premier_peer: 0.98, state_avg: 0.99, top_decile: 0.88 },
+    byHospital: { 'nhg-01': 0.86, 'nhg-02': 0.91, 'nhg-03': 0.96, 'nhg-04': 1.11, 'nhg-05': 0.99 },
   },
   {
     kpiId: 'cost_case_geo_oe',
@@ -131,6 +142,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.02, 1.01, 1.00, 0.99, 0.98, 0.97, 0.96, 0.95, 0.94, 0.93, 0.92, 0.91,
     ],
     benchmarks: { national_avg: 1.00, premier_peer: 0.97, state_avg: 0.98, top_decile: 0.87 },
+    byHospital: { 'nhg-01': 0.84, 'nhg-02': 0.88, 'nhg-03': 0.93, 'nhg-04': 1.07, 'nhg-05': 0.96 },
   },
   {
     kpiId: 'icu_return_48h',
@@ -142,6 +154,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       2.8, 2.7, 2.6, 2.5, 2.5, 2.4, 2.3, 2.2, 2.2, 2.1, 2.1, 2.0,
     ],
     benchmarks: { national_avg: 3.4, premier_peer: 3.1, state_avg: 3.2, top_decile: 2.1 },
+    byHospital: { 'nhg-01': 0.4, 'nhg-02': 1.4, 'nhg-03': 2.4, 'nhg-04': 5.4, 'nhg-05': 3.4 },
   },
   {
     kpiId: 'icu_admission',
@@ -153,6 +166,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       15.5, 15.2, 15.0, 14.8, 14.6, 14.4, 14.2, 14.0, 13.8, 13.6, 13.4, 13.2,
     ],
     benchmarks: { national_avg: 19.8, premier_peer: 19.2, state_avg: 19.5, top_decile: 15.4 },
+    byHospital: { 'nhg-01': 15.2, 'nhg-02': 16.2, 'nhg-03': 17.2, 'nhg-04': 20.2, 'nhg-05': 18.2 },
   },
 
   // ── Readmissions ──────────────────────────────────────────────────────────
@@ -166,6 +180,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.02, 1.00, 0.99, 0.98, 0.97, 0.97, 0.96, 0.94, 0.93, 0.92, 0.92, 0.91,
     ],
     benchmarks: { national_avg: 1.00, premier_peer: 0.97, state_avg: 0.98, top_decile: 0.84 },
+    byHospital: { 'nhg-01': 0.83, 'nhg-02': 0.87, 'nhg-03': 0.92, 'nhg-04': 1.06, 'nhg-05': 0.95 },
   },
   {
     kpiId: 'readmit_hw_oe_csa',
@@ -177,6 +192,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.01, 1.00, 0.99, 0.98, 0.97, 0.96, 0.95, 0.94, 0.93, 0.92, 0.91, 0.90,
     ],
     benchmarks: { national_avg: 1.00, premier_peer: 0.95, state_avg: 0.97, top_decile: 0.82 },
+    byHospital: { 'nhg-01': 0.80, 'nhg-02': 0.84, 'nhg-03': 0.89, 'nhg-04': 1.03, 'nhg-05': 0.91 },
   },
   {
     kpiId: 'ed_return_7d',
@@ -188,6 +204,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       4.7, 4.6, 4.5, 4.4, 4.3, 4.2, 4.1, 4.0, 3.9, 3.8, 3.7, 3.6,
     ],
     benchmarks: { national_avg: 4.1, premier_peer: 3.8, state_avg: 3.9, top_decile: 2.6 },
+    byHospital: { 'nhg-01': 0.8, 'nhg-02': 1.8, 'nhg-03': 2.8, 'nhg-04': 5.8, 'nhg-05': 3.8 },
   },
   {
     kpiId: 'ed_return_ip_30d',
@@ -199,6 +216,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       2.6, 2.5, 2.4, 2.3, 2.3, 2.2, 2.2, 2.1, 2.1, 2.0, 2.0, 1.9,
     ],
     benchmarks: { national_avg: 7.2, premier_peer: 6.8, state_avg: 6.9, top_decile: 4.8 },
+    byHospital: { 'nhg-01': 3.3, 'nhg-02': 4.3, 'nhg-03': 5.3, 'nhg-04': 8.3, 'nhg-05': 6.3 },
   },
 
   // ── Clinical Effectiveness ────────────────────────────────────────────────
@@ -212,6 +230,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       65, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77, 78,
     ],
     benchmarks: { national_avg: 68.4, premier_peer: 71.2, state_avg: 70.1, top_decile: 88.5 },
+    byHospital: { 'nhg-01': 82.2, 'nhg-02': 80.2, 'nhg-03': 79.2, 'nhg-04': 75.2, 'nhg-05': 78.2 },
   },
   {
     kpiId: 'vte_ppx',
@@ -223,6 +242,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       85, 86, 87, 87, 88, 88, 89, 89, 90, 90, 91, 91,
     ],
     benchmarks: { national_avg: 89.7, premier_peer: 91.5, state_avg: 90.8, top_decile: 97.2 },
+    byHospital: { 'nhg-01': 97.2, 'nhg-02': 95.2, 'nhg-03': 94.2, 'nhg-04': 90.2, 'nhg-05': 93.2 },
   },
   {
     kpiId: 'ha_vte',
@@ -234,6 +254,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       1.3, 1.3, 1.2, 1.2, 1.1, 1.1, 1.0, 1.0, 1.0, 0.9, 0.9, 0.9,
     ],
     benchmarks: { national_avg: 0.58, premier_peer: 0.54, state_avg: 0.56, top_decile: 0.38 },
+    byHospital: { 'nhg-01': 0.40, 'nhg-02': 0.42, 'nhg-03': 0.44, 'nhg-04': 0.51, 'nhg-05': 0.45 },
   },
   {
     kpiId: 'oud_pharmacotherapy',
@@ -245,6 +266,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       42, 44, 45, 46, 48, 49, 50, 51, 52, 54, 55, 56,
     ],
     benchmarks: { national_avg: 35.2, premier_peer: 38.4, state_avg: 37.1, top_decile: 68.4 },
+    byHospital: { 'nhg-01': 52.5, 'nhg-02': 50.5, 'nhg-03': 49.5, 'nhg-04': 45.5, 'nhg-05': 48.5 },
   },
 
   // ── Health Equity ─────────────────────────────────────────────────────────
@@ -258,6 +280,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       19, 21, 22, 23, 25, 26, 28, 29, 31, 32, 34, 35,
     ],
     benchmarks: { national_avg: 22.3, premier_peer: 25.1, state_avg: 23.8, top_decile: 45.2 },
+    byHospital: { 'nhg-01': 39.4, 'nhg-02': 37.4, 'nhg-03': 36.4, 'nhg-04': 32.4, 'nhg-05': 35.4 },
   },
   {
     kpiId: 'vulnerability_idx_pct',
@@ -269,6 +292,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       45, 47, 48, 49, 51, 52, 53, 54, 56, 57, 58, 59,
     ],
     benchmarks: { national_avg: 58.4, premier_peer: 62.1, state_avg: 60.8, top_decile: 89.4 },
+    byHospital: { 'nhg-01': 81.4, 'nhg-02': 79.4, 'nhg-03': 78.4, 'nhg-04': 74.4, 'nhg-05': 77.4 },
   },
   {
     kpiId: 'clinical_vuln_idx',
@@ -280,6 +304,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       59, 60, 60, 61, 61, 62, 62, 63, 63, 64, 64, 65,
     ],
     benchmarks: { national_avg: 0.54, premier_peer: 0.58, state_avg: 0.56, top_decile: 0.78 },
+    byHospital: { 'nhg-01': 0.62, 'nhg-02': 0.65, 'nhg-03': 0.68, 'nhg-04': 0.79, 'nhg-05': 0.70 },
   },
   {
     kpiId: 'social_vuln_idx',
@@ -291,6 +316,7 @@ export const MOCK_METRICS: MetricSnapshot[] = [
       55, 56, 56, 57, 57, 58, 58, 59, 59, 60, 60, 61,
     ],
     benchmarks: { national_avg: 0.41, premier_peer: 0.44, state_avg: 0.43, top_decile: 0.72 },
+    byHospital: { 'nhg-01': 0.51, 'nhg-02': 0.53, 'nhg-03': 0.56, 'nhg-04': 0.65, 'nhg-05': 0.58 },
   },
 ]
 
