@@ -21,7 +21,7 @@ import type { KpiDef } from '../data/kpis'
 import { BENCHMARK_DEFS } from '../data/benchmarks'
 import type { BenchmarkDef } from '../data/benchmarks'
 import { HEALTH_SYSTEM } from '../data/facilities'
-import { MOCK_METRICS, AVAILABLE_QUARTERS, TREND_QUARTERS, formatQuarterLabel, getValuesForPeriod } from '../data/mockMetrics'
+import { MOCK_METRICS, AVAILABLE_QUARTERS, formatQuarterLabel, getValuesForPeriod } from '../data/mockMetrics'
 import type { MetricSnapshot, PerformanceDirection } from '../data/mockMetrics'
 import ViewTabs from '../components/layout/ViewTabs'
 import KpiManageModal from '../components/KpiManageModal'
@@ -490,7 +490,24 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, t
 
 // ─── TrendView helpers ────────────────────────────────────────────────────────
 
-const QUARTER_LABELS = ["Q1'23","Q2'23","Q3'23","Q4'23","Q1'24","Q2'24","Q3'24","Q4'24","Q1'25","Q2'25","Q3'25","Q4'25"]
+// 24 quarters: Q1'20 (index 0) → Q4'25 (index 23)
+const ALL_QUARTER_IDS = [
+  '1Q2020','2Q2020','3Q2020','4Q2020',
+  '1Q2021','2Q2021','3Q2021','4Q2021',
+  '1Q2022','2Q2022','3Q2022','4Q2022',
+  '1Q2023','2Q2023','3Q2023','4Q2023',
+  '1Q2024','2Q2024','3Q2024','4Q2024',
+  '1Q2025','2Q2025','3Q2025','4Q2025',
+]
+
+const ALL_QUARTER_LABELS = [
+  "Q1'20","Q2'20","Q3'20","Q4'20",
+  "Q1'21","Q2'21","Q3'21","Q4'21",
+  "Q1'22","Q2'22","Q3'22","Q4'22",
+  "Q1'23","Q2'23","Q3'23","Q4'23",
+  "Q1'24","Q2'24","Q3'24","Q4'24",
+  "Q1'25","Q2'25","Q3'25","Q4'25",
+]
 
 const QTR_STARTS: Record<number, string> = { 1: '1/1',  2: '4/1',  3: '7/1',  4: '10/1' }
 const QTR_ENDS:   Record<number, string> = { 1: '3/31', 2: '6/30', 3: '9/30', 4: '12/31' }
@@ -499,32 +516,69 @@ function parseQ(q: string): { qNum: number; year: number } {
   return { qNum: parseInt(q[0]), year: parseInt(q.slice(2)) }
 }
 
+function computePeriodValue(rawTrend: number[], rawIdx: number, periodType: PeriodType): number {
+  switch (periodType) {
+    case '1Q':
+      return rawTrend[rawIdx]
+    case 'R12': {
+      const start = Math.max(0, rawIdx - 3)
+      const slice = rawTrend.slice(start, rawIdx + 1)
+      return slice.reduce((a, b) => a + b, 0) / slice.length
+    }
+    case 'YTD': {
+      const quarterInYear = rawIdx % 4   // 0=Q1, 1=Q2, 2=Q3, 3=Q4
+      const start = rawIdx - quarterInYear
+      const slice = rawTrend.slice(start, rawIdx + 1)
+      return slice.reduce((a, b) => a + b, 0) / slice.length
+    }
+    case 'R36': {
+      const start = Math.max(0, rawIdx - 11)
+      const slice = rawTrend.slice(start, rawIdx + 1)
+      return slice.reduce((a, b) => a + b, 0) / slice.length
+    }
+    default:
+      return rawTrend[rawIdx]
+  }
+}
+
 function getPeriodDateRange(endingQuarter: string, periodType: PeriodType): string {
-  const endIdx  = TREND_QUARTERS.indexOf(endingQuarter)
+  const endRawIdx = ALL_QUARTER_IDS.indexOf(endingQuarter)
   const { qNum: endQNum, year: endYear } = parseQ(endingQuarter)
 
-  let startIdx: number
+  let startRawIdx: number
   switch (periodType) {
-    case '1Q':  startIdx = endIdx; break
-    case 'R12': startIdx = Math.max(0, endIdx - 3); break
-    case 'YTD': startIdx = TREND_QUARTERS.indexOf(`1Q${endYear}`); break
-    case 'R36': startIdx = Math.max(0, endIdx - 11); break
+    case '1Q':  startRawIdx = endRawIdx; break
+    case 'R12': startRawIdx = Math.max(0, endRawIdx - 3); break
+    case 'YTD': {
+      const q1Id = `1Q${endYear}`
+      const q1Idx = ALL_QUARTER_IDS.indexOf(q1Id)
+      startRawIdx = q1Idx >= 0 ? q1Idx : endRawIdx
+      break
+    }
+    case 'R36': startRawIdx = Math.max(0, endRawIdx - 11); break
   }
-  const { qNum: startQNum, year: startYear } = parseQ(TREND_QUARTERS[startIdx])
+  const { qNum: startQNum, year: startYear } = parseQ(ALL_QUARTER_IDS[startRawIdx])
   return `${QTR_STARTS[startQNum]}/${startYear} – ${QTR_ENDS[endQNum]}/${endYear}`
 }
 
-function getPeriodHighlight(endingQuarter: string, periodType: PeriodType): { x1: string; x2: string } {
-  const endIdx  = TREND_QUARTERS.indexOf(endingQuarter)
+function getPeriodHighlight(endingQuarter: string, periodType: PeriodType, chartStartRawIdx: number): { x1: string; x2: string } {
+  const endRawIdx = ALL_QUARTER_IDS.indexOf(endingQuarter)
   const { year: endYear } = parseQ(endingQuarter)
-  let startIdx: number
+  let hlStartRawIdx: number
   switch (periodType) {
-    case '1Q':  startIdx = endIdx; break
-    case 'R12': startIdx = Math.max(0, endIdx - 3); break
-    case 'YTD': startIdx = Math.max(0, TREND_QUARTERS.indexOf(`1Q${endYear}`)); break
-    case 'R36': startIdx = Math.max(0, endIdx - 11); break
+    case '1Q':  hlStartRawIdx = endRawIdx; break
+    case 'R12': hlStartRawIdx = Math.max(0, endRawIdx - 3); break
+    case 'YTD': {
+      const q1Id = `1Q${endYear}`
+      const q1Idx = ALL_QUARTER_IDS.indexOf(q1Id)
+      hlStartRawIdx = Math.max(0, q1Idx >= 0 ? q1Idx : endRawIdx)
+      break
+    }
+    case 'R36': hlStartRawIdx = Math.max(0, endRawIdx - 11); break
   }
-  return { x1: QUARTER_LABELS[startIdx], x2: QUARTER_LABELS[endIdx] }
+  // Clamp to the visible chart window
+  const clampedStart = Math.max(hlStartRawIdx, chartStartRawIdx)
+  return { x1: ALL_QUARTER_LABELS[clampedStart], x2: ALL_QUARTER_LABELS[endRawIdx] }
 }
 
 // Short label shown on benchmark reference lines
@@ -618,13 +672,19 @@ const PERIOD_TYPE_LABEL: Record<PeriodType, string> = {
 }
 
 function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: TrendViewProps) {
-  // X-axis ticks: Q1 of each year + ending quarter if not Q1
-  const endLabel = QUARTER_LABELS[TREND_QUARTERS.indexOf(timePeriod.endingQuarter)]
-  const xTicks   = ["Q1'23", "Q1'24", "Q1'25"].filter(t => t !== endLabel)
-  if (endLabel) xTicks.push(endLabel)
+  // Compute the 12-quarter window based on the selected ending quarter
+  const endRawIdx      = ALL_QUARTER_IDS.indexOf(timePeriod.endingQuarter)
+  const startRawIdx    = Math.max(0, endRawIdx - 11)
 
-  const { x1: hlX1, x2: hlX2 } = getPeriodHighlight(timePeriod.endingQuarter, timePeriod.type)
-  const dateRange = getPeriodDateRange(timePeriod.endingQuarter, timePeriod.type)
+  // X-axis ticks: Q1 of each visible year + the ending quarter if not already Q1
+  const endLabel = ALL_QUARTER_LABELS[endRawIdx]
+  const xTicks: string[] = []
+  for (let i = startRawIdx; i <= endRawIdx; i++) {
+    if (i % 4 === 0) xTicks.push(ALL_QUARTER_LABELS[i])  // only Q1 ticks (index 0=Q1,1=Q2,2=Q3,3=Q4)
+  }
+  if (!xTicks.includes(endLabel)) xTicks.push(endLabel)
+
+  const { x1: hlX1, x2: hlX2 } = getPeriodHighlight(timePeriod.endingQuarter, timePeriod.type, startRawIdx)
 
   return (
     <div className="px-6 py-6 space-y-8">
@@ -647,28 +707,31 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                 if (!metric) return null
 
                 const cardDelay = sectionDelay + cardIndex * 0.04
-                const { trend, direction, format } = metric
-                // Use the raw ending-quarter value so it matches the rightmost chart data point
-                const endIdx  = TREND_QUARTERS.indexOf(timePeriod.endingQuarter)
-                const current = trend[endIdx] ?? metric.current
+                const { rawTrend, direction, format } = metric
 
-                const firstVal = trend[0]
-                const lastVal  = trend[trend.length - 1]
+                // Header value: period-aware, matches the rightmost chart point
+                const headerValue = computePeriodValue(rawTrend, endRawIdx, timePeriod.type)
+
+                // Determine line color from the trend over the visible window
+                const firstVal = computePeriodValue(rawTrend, startRawIdx, timePeriod.type)
+                const lastVal  = headerValue
                 const improving =
                   direction === 'lower_better'  ? lastVal < firstVal
                   : direction === 'higher_better' ? lastVal > firstVal
                   : true
                 const lineColor = improving ? '#22c55e' : '#ef4444'
 
-                // Embed benchmark values in chart data so tooltip can access them
-                const chartData = trend.map((v, i) => {
-                  const pt: Record<string, number | string> = { q: QUARTER_LABELS[i], v }
+                // Build 12-quarter chart data using period-aware values
+                const chartData: Record<string, number | string>[] = []
+                for (let rawIdx = startRawIdx; rawIdx <= endRawIdx; rawIdx++) {
+                  const v = computePeriodValue(rawTrend, rawIdx, timePeriod.type)
+                  const pt: Record<string, number | string> = { q: ALL_QUARTER_LABELS[rawIdx], v }
                   selectedBenchmarkIds.forEach(bid => {
                     const bv = metric.benchmarks[bid]
                     if (bv !== undefined) pt[bid] = bv
                   })
-                  return pt
-                })
+                  chartData.push(pt)
+                }
 
                 return (
                   <motion.div
@@ -685,7 +748,7 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                       </p>
                       <div className="flex flex-col items-end shrink-0">
                         <span className="text-xl font-black text-white leading-none">
-                          {formatValue(current, format)}
+                          {formatValue(headerValue, format)}
                         </span>
                         <span className="text-[10px] text-slate-500 mt-0.5 text-right">
                           {PERIOD_TYPE_LABEL[timePeriod.type]}
