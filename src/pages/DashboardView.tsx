@@ -567,6 +567,7 @@ interface TrendViewProps {
 
 interface TrendTooltipPayload {
   value: number
+  payload: Record<string, number>
 }
 
 interface TrendTooltipProps {
@@ -574,14 +575,37 @@ interface TrendTooltipProps {
   payload?: TrendTooltipPayload[]
   label?: string
   format: MetricSnapshot['format']
+  selectedBenchmarkIds: string[]
 }
 
-function TrendTooltipContent({ active, payload, label, format }: TrendTooltipProps) {
+function TrendTooltipContent({ active, payload, label, format, selectedBenchmarkIds }: TrendTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
+  const dataPoint = payload[0].payload
+  const benchEntries = selectedBenchmarkIds
+    .map(id => ({ id, value: dataPoint[id] }))
+    .filter(e => e.value !== undefined)
+
   return (
-    <div style={{ background: '#0C2035', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, fontSize: 11, padding: '6px 10px', color: '#fff', lineHeight: '1.6' }}>
-      {label && <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>{label}</div>}
-      <div>{formatValue(payload[0].value, format)}</div>
+    <div style={{ background: '#0C2035', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, fontSize: 11, padding: '7px 10px', color: '#fff', minWidth: 130 }}>
+      {label && (
+        <div style={{ color: '#64748b', fontSize: 10, marginBottom: 5, paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          {label}
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: benchEntries.length ? 3 : 0 }}>
+        <span style={{ color: '#94a3b8' }}>Value</span>
+        <span style={{ fontWeight: 600 }}>{formatValue(payload[0].value, format)}</span>
+      </div>
+      {benchEntries.map(({ id, value }) => {
+        const color = BENCH_COLOR[id] ?? 'rgba(148,163,184,0.7)'
+        const name  = BENCH_SHORT[id] ?? id
+        return (
+          <div key={id} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginTop: 2 }}>
+            <span style={{ color }}>{name}</span>
+            <span style={{ color }}>{formatValue(value, format)}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -624,7 +648,9 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
 
                 const cardDelay = sectionDelay + cardIndex * 0.04
                 const { trend, direction, format } = metric
-                const { current } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
+                // Use the raw ending-quarter value so it matches the rightmost chart data point
+                const endIdx  = TREND_QUARTERS.indexOf(timePeriod.endingQuarter)
+                const current = trend[endIdx] ?? metric.current
 
                 const firstVal = trend[0]
                 const lastVal  = trend[trend.length - 1]
@@ -634,7 +660,15 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                   : true
                 const lineColor = improving ? '#22c55e' : '#ef4444'
 
-                const chartData = trend.map((v, i) => ({ q: QUARTER_LABELS[i], v }))
+                // Embed benchmark values in chart data so tooltip can access them
+                const chartData = trend.map((v, i) => {
+                  const pt: Record<string, number | string> = { q: QUARTER_LABELS[i], v }
+                  selectedBenchmarkIds.forEach(bid => {
+                    const bv = metric.benchmarks[bid]
+                    if (bv !== undefined) pt[bid] = bv
+                  })
+                  return pt
+                })
 
                 return (
                   <motion.div
@@ -683,7 +717,15 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                           tickFormatter={v => formatTick(v, format)}
                           tickCount={4}
                         />
-                        <Tooltip content={<TrendTooltipContent format={format} />} />
+                        <Tooltip
+                          content={(props) => (
+                            <TrendTooltipContent
+                              {...(props as unknown as TrendTooltipProps)}
+                              format={format}
+                              selectedBenchmarkIds={selectedBenchmarkIds}
+                            />
+                          )}
+                        />
 
                         {/* Selected period highlight */}
                         <ReferenceArea
@@ -698,8 +740,9 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                         {selectedBenchmarkIds.map(benchId => {
                           const benchValue = metric.benchmarks[benchId]
                           if (benchValue === undefined) return null
-                          const color = BENCH_COLOR[benchId] ?? 'rgba(148,163,184,0.6)'
-                          const label = BENCH_SHORT[benchId] ?? benchId
+                          const color    = BENCH_COLOR[benchId] ?? 'rgba(148,163,184,0.6)'
+                          const shortLbl = BENCH_SHORT[benchId]
+                          if (!shortLbl) return null   // skip if no label defined — prevents "null" rendering
                           return (
                             <ReferenceLine
                               key={benchId}
@@ -707,7 +750,7 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                               stroke={color}
                               strokeDasharray="4 3"
                               strokeWidth={1.5}
-                              label={{ value: label, position: 'insideTopRight', fontSize: 8, fill: color }}
+                              label={{ value: shortLbl, position: 'insideTopRight', fontSize: 8, fill: color }}
                             />
                           )
                         })}
