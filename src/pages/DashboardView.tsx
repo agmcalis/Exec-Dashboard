@@ -538,12 +538,12 @@ const BENCH_SHORT: Record<string, string> = {
 }
 // Color per benchmark
 const BENCH_COLOR: Record<string, string> = {
-  national_avg: 'rgba(148,163,184,0.7)',
-  top_decile:   'rgba(34,197,94,0.75)',
-  top_quartile: 'rgba(163,215,239,0.7)',
-  premier_peer: 'rgba(36,163,227,0.75)',
-  state_avg:    'rgba(251,191,36,0.7)',
-  system_avg:   'rgba(168,85,247,0.7)',
+  national_avg: '#94a3b8',
+  top_decile:   '#22c55e',
+  top_quartile: '#a3d7ef',
+  premier_peer: '#24a3e3',
+  state_avg:    '#fbbf24',
+  system_avg:   '#a855f7',
 }
 
 function formatTick(value: number, format: MetricSnapshot['format']): string {
@@ -703,14 +703,14 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                         <XAxis
                           dataKey="q"
                           ticks={xTicks}
-                          tick={{ fill: '#475569', fontSize: 9 }}
+                          tick={{ fill: '#94a3b8', fontSize: 9 }}
                           axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
                           tickLine={false}
                           interval="preserveStartEnd"
                         />
                         <YAxis
                           domain={['auto', 'auto']}
-                          tick={{ fill: '#475569', fontSize: 9 }}
+                          tick={{ fill: '#94a3b8', fontSize: 9 }}
                           axisLine={false}
                           tickLine={false}
                           width={38}
@@ -750,7 +750,7 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                               stroke={color}
                               strokeDasharray="4 3"
                               strokeWidth={1.5}
-                              label={{ value: shortLbl, position: 'insideTopRight', fontSize: 8, fill: color }}
+                              label={{ value: shortLbl, position: 'insideTopRight', fontSize: 9, fill: color, fontWeight: 600 }}
                             />
                           )
                         })}
@@ -829,7 +829,7 @@ function PeriodBar({ timePeriod, onTimePeriodChange }: PeriodBarProps) {
             className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all cursor-pointer ${
               timePeriod.type === pid
                 ? 'bg-surface-3 text-white'
-                : 'text-slate-500 hover:text-slate-300'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             {label}
@@ -841,8 +841,8 @@ function PeriodBar({ timePeriod, onTimePeriodChange }: PeriodBarProps) {
       <div className="w-px h-4 bg-border mx-1" />
 
       {/* Selected discharge period */}
-      <span className="text-[11px] text-slate-500">
-        <span className="font-semibold uppercase tracking-wider text-slate-600">Selected Discharge Period: </span>
+      <span className="text-[11px] text-slate-300">
+        <span className="font-semibold uppercase tracking-wider text-slate-400">Selected Discharge Period: </span>
         {dateRange}
       </span>
     </div>
