@@ -290,11 +290,11 @@ function AddViewModal({ onClose, onAdd, onAddShared, sharedViewCount, sharedView
                               <Check size={11} strokeWidth={3} className="text-white" />
                             </span>
                           )}
-                          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                            {kpi.unit}
-                          </span>
                           <span className="text-sm font-semibold text-white leading-snug">
                             {kpi.name}
+                          </span>
+                          <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mt-1">
+                            {kpi.unit}
                           </span>
                         </button>
                       )
@@ -390,15 +390,14 @@ function AddViewModal({ onClose, onAdd, onAddShared, sharedViewCount, sharedView
 
 export default function App() {
   const store = useAppStore()
-  const { views, currentUserId, addView, removeView, renameView, updateViewKpis, shareView, addSharedViewAsTab, removeSharedTab, setCurrentUser } = store
+  const { viewsByUser, currentUserId, addView, removeView, renameView, updateViewKpis, shareView, addSharedViewAsTab, removeSharedTab, setCurrentUser } = store
 
   const currentUser = MOCK_USERS.find(u => u.id === currentUserId) ?? MOCK_USERS[0]
+  const views = viewsByUser[currentUserId] ?? []
 
-  const [activeViewId, setActiveViewId] = useState<string | null>(() =>
-    views.length > 0 ? views[0].id : null
-  )
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
 
-  // Keep activeViewId in sync when views change
+  // Keep activeViewId in sync when views or currentUser change
   useEffect(() => {
     if (views.length === 0) {
       setActiveViewId(null)
@@ -470,8 +469,9 @@ export default function App() {
     addSharedViewAsTab(sharedViewId)
     // Set active to the newly added tab
     setTimeout(() => {
-      const updated = useAppStore.getState().views
-      const added = updated.find(v => v.sharedFromId === sharedViewId)
+      const s = useAppStore.getState()
+      const updated = s.viewsByUser[s.currentUserId] ?? []
+      const added = updated.find((v: ViewConfig) => v.sharedFromId === sharedViewId)
       if (added) setActiveViewId(added.id)
     }, 50)
   }
@@ -486,9 +486,10 @@ export default function App() {
 
   function handleUserChange(userId: string) {
     setCurrentUser(userId)
-    // Reset active view to first for new user perspective
-    const currentViews = useAppStore.getState().views
-    setActiveViewId(currentViews.length > 0 ? currentViews[0].id : null)
+    // Reset active view to first view for the incoming user
+    const s = useAppStore.getState()
+    const nextViews = s.viewsByUser[userId] ?? []
+    setActiveViewId(nextViews.length > 0 ? nextViews[0].id : null)
   }
 
   const sharedWithMe = getSharedWithMe(store)
@@ -561,7 +562,7 @@ export default function App() {
             onClose={() => setShowAddViewModal(false)}
             onAdd={handleAddView}
             onAddShared={handleAddSharedView}
-            sharedViewCount={sharedWithMe.filter(sv => !isViewAlreadyAdded(views, sv.id)).length}
+            sharedViewCount={sharedWithMe.filter(sv => !isViewAlreadyAdded(store, sv.id)).length}
             sharedViews={sharedWithMe}
             alreadyAddedIds={alreadyAddedIds}
           />

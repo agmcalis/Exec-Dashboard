@@ -25,7 +25,7 @@ export interface SharedView {
 
 interface AppStore {
   currentUserId: string
-  views: ViewConfig[]
+  viewsByUser: Record<string, ViewConfig[]>
   sharedViews: SharedView[]
 
   setCurrentUser: (userId: string) => void
@@ -38,11 +38,28 @@ interface AppStore {
   removeSharedTab: (viewId: string) => void
 }
 
+// Helper to get/set a user's views slice
+function userViews(state: AppStore): ViewConfig[] {
+  return state.viewsByUser[state.currentUserId] ?? []
+}
+
+function setUserViews(
+  state: AppStore,
+  updater: (prev: ViewConfig[]) => ViewConfig[],
+): Partial<AppStore> {
+  return {
+    viewsByUser: {
+      ...state.viewsByUser,
+      [state.currentUserId]: updater(userViews(state)),
+    },
+  }
+}
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
       currentUserId: DEFAULT_USER_ID,
-      views: [],
+      viewsByUser: {},
       sharedViews: [],
 
       setCurrentUser: (userId: string) => {
@@ -50,45 +67,46 @@ export const useAppStore = create<AppStore>()(
       },
 
       addView: (view: ViewConfig) => {
-        set(state => ({ views: [...state.views, view] }))
+        set(state => setUserViews(state, prev => [...prev, view]))
       },
 
       removeView: (viewId: string) => {
-        set(state => ({ views: state.views.filter(v => v.id !== viewId) }))
+        set(state => setUserViews(state, prev => prev.filter(v => v.id !== viewId)))
       },
 
       renameView: (viewId: string, name: string) => {
-        set(state => ({
-          views: state.views.map(v => (v.id === viewId ? { ...v, name: name.trim() || v.name } : v)),
-        }))
+        set(state =>
+          setUserViews(state, prev =>
+            prev.map(v => (v.id === viewId ? { ...v, name: name.trim() || v.name } : v)),
+          ),
+        )
       },
 
       updateViewKpis: (viewId: string, kpiIds: string[], benchmarkIds: string[]) => {
-        set(state => ({
-          views: state.views.map(v =>
-            v.id === viewId
-              ? { ...v, selectedKpiIds: kpiIds, selectedBenchmarkIds: benchmarkIds }
-              : v,
+        set(state =>
+          setUserViews(state, prev =>
+            prev.map(v =>
+              v.id === viewId
+                ? { ...v, selectedKpiIds: kpiIds, selectedBenchmarkIds: benchmarkIds }
+                : v,
+            ),
           ),
-        }))
+        )
       },
 
       shareView: (viewId: string, sharedWith: 'all' | string[]) => {
         const state = get()
-        const view = state.views.find(v => v.id === viewId)
+        const view = userViews(state).find(v => v.id === viewId)
         if (!view) return
 
         const currentUser = MOCK_USERS.find(u => u.id === state.currentUserId)
         if (!currentUser) return
 
-        // Check if a SharedView already exists for this viewId + user combo
         const existingIdx = state.sharedViews.findIndex(
-          sv => sv.sharedBy.id === state.currentUserId && sv.sharedAt !== '' &&
-            state.views.some(v => v.id === viewId && v.name === sv.name)
+          sv => sv.sharedBy.id === state.currentUserId && sv.name === view.name,
         )
 
         if (existingIdx !== -1) {
-          // Update existing
           set(state => ({
             sharedViews: state.sharedViews.map((sv, i) =>
               i === existingIdx
@@ -97,7 +115,6 @@ export const useAppStore = create<AppStore>()(
             ),
           }))
         } else {
-          // Create new
           const newShared: SharedView = {
             id: Date.now().toString(),
             name: view.name,
@@ -125,11 +142,11 @@ export const useAppStore = create<AppStore>()(
           sharedBy: sharedView.sharedBy,
           sharedFromId: sharedViewId,
         }
-        set(state => ({ views: [...state.views, newView] }))
+        set(state => setUserViews(state, prev => [...prev, newView]))
       },
 
       removeSharedTab: (viewId: string) => {
-        set(state => ({ views: state.views.filter(v => v.id !== viewId) }))
+        set(state => setUserViews(state, prev => prev.filter(v => v.id !== viewId)))
       },
     }),
     { name: 'qi-app-store' },
@@ -144,6 +161,7 @@ export function getSharedWithMe(store: AppStore): SharedView[] {
   })
 }
 
-export function isViewAlreadyAdded(views: ViewConfig[], sharedViewId: string): boolean {
+export function isViewAlreadyAdded(store: AppStore, sharedViewId: string): boolean {
+  const views = store.viewsByUser[store.currentUserId] ?? []
   return views.some(v => v.sharedFromId === sharedViewId)
 }
