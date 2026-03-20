@@ -107,8 +107,8 @@ export default function ViewTabs({ views, activeViewId, onSelect, onNew, onDelet
                 </button>
               )}
 
-              {/* Delete button — only when multiple views exist */}
-              {views.length > 1 && !isEditing && (
+              {/* Delete button */}
+              {!isEditing && (
                 <button
                   onClick={e => {
                     e.stopPropagation()

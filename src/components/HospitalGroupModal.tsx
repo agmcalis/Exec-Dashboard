@@ -55,6 +55,18 @@ export default function HospitalGroupModal({ group, onSave, onDelete, onClose }:
     ? hospitals
     : hospitals.filter(h => h.type === typeFilter)
 
+  const allFilteredSelected = filteredHospitals.length > 0 &&
+    filteredHospitals.every(h => selectedIds.includes(h.id))
+
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => prev.filter(id => !filteredHospitals.some(h => h.id === id)))
+    } else {
+      const toAdd = filteredHospitals.map(h => h.id)
+      setSelectedIds(prev => [...new Set([...prev, ...toAdd])])
+    }
+  }
+
   function toggleHospital(id: string) {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(h => h !== id) : [...prev, id]
@@ -118,11 +130,19 @@ export default function HospitalGroupModal({ group, onSave, onDelete, onClose }:
 
           {/* Hospital selection */}
           <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Select Hospitals
-              </span>
-              <span className="text-xs text-slate-500">(select at least 2)</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Select Hospitals
+                </span>
+                <span className="text-xs text-slate-500">(select at least 2)</span>
+              </div>
+              <button
+                onClick={toggleSelectAll}
+                className="text-xs text-premier hover:text-premier-hover font-medium transition-colors"
+              >
+                {allFilteredSelected ? 'Deselect All' : 'Select All'}
+              </button>
             </div>
 
             {/* Type filter pills */}
