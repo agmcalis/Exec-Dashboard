@@ -8,6 +8,8 @@ import {
   ResponsiveContainer,
   Tooltip,
   ReferenceLine,
+  ReferenceArea,
+  CartesianGrid,
   XAxis,
   YAxis,
 } from 'recharts'
@@ -19,7 +21,7 @@ import type { KpiDef } from '../data/kpis'
 import { BENCHMARK_DEFS } from '../data/benchmarks'
 import type { BenchmarkDef } from '../data/benchmarks'
 import { HEALTH_SYSTEM } from '../data/facilities'
-import { MOCK_METRICS, AVAILABLE_QUARTERS, formatQuarterLabel, getValuesForPeriod } from '../data/mockMetrics'
+import { MOCK_METRICS, AVAILABLE_QUARTERS, TREND_QUARTERS, formatQuarterLabel, getValuesForPeriod } from '../data/mockMetrics'
 import type { MetricSnapshot, PerformanceDirection } from '../data/mockMetrics'
 import ViewTabs from '../components/layout/ViewTabs'
 import KpiManageModal from '../components/KpiManageModal'
@@ -486,9 +488,75 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, t
   )
 }
 
-// ─── TrendView ────────────────────────────────────────────────────────────────
+// ─── TrendView helpers ────────────────────────────────────────────────────────
 
-const QUARTER_LABELS = ["Q1'23", "Q2'23", "Q3'23", "Q4'23", "Q1'24", "Q2'24", "Q3'24", "Q4'24", "Q1'25", "Q2'25", "Q3'25", "Q4'25"]
+const QUARTER_LABELS = ["Q1'23","Q2'23","Q3'23","Q4'23","Q1'24","Q2'24","Q3'24","Q4'24","Q1'25","Q2'25","Q3'25","Q4'25"]
+
+const QTR_STARTS: Record<number, string> = { 1: '1/1',  2: '4/1',  3: '7/1',  4: '10/1' }
+const QTR_ENDS:   Record<number, string> = { 1: '3/31', 2: '6/30', 3: '9/30', 4: '12/31' }
+
+function parseQ(q: string): { qNum: number; year: number } {
+  return { qNum: parseInt(q[0]), year: parseInt(q.slice(2)) }
+}
+
+function getPeriodDateRange(endingQuarter: string, periodType: PeriodType): string {
+  const endIdx  = TREND_QUARTERS.indexOf(endingQuarter)
+  const { qNum: endQNum, year: endYear } = parseQ(endingQuarter)
+
+  let startIdx: number
+  switch (periodType) {
+    case '1Q':  startIdx = endIdx; break
+    case 'R12': startIdx = Math.max(0, endIdx - 3); break
+    case 'YTD': startIdx = TREND_QUARTERS.indexOf(`1Q${endYear}`); break
+    case 'R36': startIdx = Math.max(0, endIdx - 11); break
+  }
+  const { qNum: startQNum, year: startYear } = parseQ(TREND_QUARTERS[startIdx])
+  return `${QTR_STARTS[startQNum]}/${startYear} – ${QTR_ENDS[endQNum]}/${endYear}`
+}
+
+function getPeriodHighlight(endingQuarter: string, periodType: PeriodType): { x1: string; x2: string } {
+  const endIdx  = TREND_QUARTERS.indexOf(endingQuarter)
+  const { year: endYear } = parseQ(endingQuarter)
+  let startIdx: number
+  switch (periodType) {
+    case '1Q':  startIdx = endIdx; break
+    case 'R12': startIdx = Math.max(0, endIdx - 3); break
+    case 'YTD': startIdx = Math.max(0, TREND_QUARTERS.indexOf(`1Q${endYear}`)); break
+    case 'R36': startIdx = Math.max(0, endIdx - 11); break
+  }
+  return { x1: QUARTER_LABELS[startIdx], x2: QUARTER_LABELS[endIdx] }
+}
+
+// Short label shown on benchmark reference lines
+const BENCH_SHORT: Record<string, string> = {
+  national_avg: 'Natl',
+  top_decile:   'Top 10%',
+  top_quartile: 'Top 25%',
+  premier_peer: 'Peer',
+  state_avg:    'State',
+  system_avg:   'System',
+}
+// Color per benchmark
+const BENCH_COLOR: Record<string, string> = {
+  national_avg: 'rgba(148,163,184,0.7)',
+  top_decile:   'rgba(34,197,94,0.75)',
+  top_quartile: 'rgba(163,215,239,0.7)',
+  premier_peer: 'rgba(36,163,227,0.75)',
+  state_avg:    'rgba(251,191,36,0.7)',
+  system_avg:   'rgba(168,85,247,0.7)',
+}
+
+function formatTick(value: number, format: MetricSnapshot['format']): string {
+  switch (format) {
+    case 'ratio': return value.toFixed(2)
+    case 'percent': return `${parseFloat(value.toFixed(1))}%`
+    case 'rate':    return parseFloat(value.toFixed(1)).toString()
+    case 'index':   return value.toFixed(2)
+    default:        return String(parseFloat(value.toFixed(1)))
+  }
+}
+
+// ─── TrendView ────────────────────────────────────────────────────────────────
 
 interface TrendViewProps {
   grouped: GroupedCategory[]
@@ -510,37 +578,38 @@ interface TrendTooltipProps {
 function TrendTooltipContent({ active, payload, format }: TrendTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   return (
-    <div
-      style={{
-        background: '#0C2035',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 8,
-        fontSize: 11,
-        padding: '4px 8px',
-        color: '#fff',
-      }}
-    >
+    <div style={{ background: '#0C2035', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, fontSize: 11, padding: '4px 8px', color: '#fff' }}>
       {formatValue(payload[0].value, format)}
     </div>
   )
 }
 
+const PERIOD_TYPE_LABEL: Record<PeriodType, string> = {
+  '1Q':  'Single Qtr',
+  'R12': 'Rolling 12M',
+  'YTD': 'YTD',
+  'R36': 'Rolling 3Y',
+}
+
 function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: TrendViewProps) {
+  // X-axis ticks: Q1 of each year + ending quarter if not Q1
+  const endLabel = QUARTER_LABELS[TREND_QUARTERS.indexOf(timePeriod.endingQuarter)]
+  const xTicks   = ["Q1'23", "Q1'24", "Q1'25"].filter(t => t !== endLabel)
+  if (endLabel) xTicks.push(endLabel)
+
+  const { x1: hlX1, x2: hlX2 } = getPeriodHighlight(timePeriod.endingQuarter, timePeriod.type)
+  const dateRange = getPeriodDateRange(timePeriod.endingQuarter, timePeriod.type)
+
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
         const sectionDelay = groupIndex * 0.06
-
         return (
           <motion.section
             key={group.category.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.3,
-              delay: sectionDelay,
-              ease: [0.4, 0, 0.2, 1],
-            }}
+            transition={{ duration: 0.3, delay: sectionDelay, ease: [0.4, 0, 0.2, 1] }}
           >
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">
               {group.category.label}
@@ -555,35 +624,15 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                 const { trend, direction, format } = metric
                 const { current } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
 
-                // Determine if trend is improving overall
                 const firstVal = trend[0]
-                const lastVal = trend[trend.length - 1]
+                const lastVal  = trend[trend.length - 1]
                 const improving =
-                  direction === 'lower_better'
-                    ? lastVal < firstVal
-                    : direction === 'higher_better'
-                      ? lastVal > firstVal
-                      : true // neutral — treat as green
-
+                  direction === 'lower_better'  ? lastVal < firstVal
+                  : direction === 'higher_better' ? lastVal > firstVal
+                  : true
                 const lineColor = improving ? '#22c55e' : '#ef4444'
 
-                // Build recharts data
-                const chartData = trend.map((v, i) => ({
-                  q: QUARTER_LABELS[i],
-                  v,
-                }))
-
-                // First selected benchmark that has a value for this metric
-                const firstBenchId = selectedBenchmarkIds.find(
-                  id => metric.benchmarks[id] !== undefined
-                )
-                const benchValue = firstBenchId !== undefined
-                  ? metric.benchmarks[firstBenchId]
-                  : undefined
-                const benchDef = firstBenchId !== undefined
-                  ? BENCHMARK_DEFS.find(b => b.id === firstBenchId)
-                  : undefined
-                const benchLabel = benchDef?.name.split(' ')[0] ?? ''
+                const chartData = trend.map((v, i) => ({ q: QUARTER_LABELS[i], v }))
 
                 return (
                   <motion.div
@@ -593,45 +642,87 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                     transition={{ duration: 0.3, delay: cardDelay, ease: [0.4, 0, 0.2, 1] }}
                     className="bg-surface border border-border rounded-2xl p-4 flex flex-col gap-2"
                   >
-                    {/* Top row: name + current value */}
-                    <div className="flex items-start gap-2">
+                    {/* Header: name left, value + period right */}
+                    <div className="flex items-start gap-3">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-tight flex-1">
                         {kpi.name}
                       </p>
-                      <span className="text-xl font-black text-white ml-auto shrink-0">
-                        {formatValue(current, format)}
-                      </span>
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className="text-xl font-black text-white leading-none">
+                          {formatValue(current, format)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 mt-0.5 text-right">
+                          {PERIOD_TYPE_LABEL[timePeriod.type]}
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Selected Discharge Period */}
+                    <p className="text-[10px] text-slate-500 leading-none">
+                      <span className="text-slate-600">Selected Discharge Period: </span>
+                      {dateRange}
+                    </p>
+
                     {/* Chart */}
-                    <ResponsiveContainer width="100%" height={80}>
-                      <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-                        <XAxis dataKey="q" hide={true} />
-                        <YAxis hide={true} domain={['auto', 'auto']} />
-                        <Tooltip
-                          content={
-                            <TrendTooltipContent format={format} />
-                          }
+                    <ResponsiveContainer width="100%" height={130}>
+                      <LineChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                        <CartesianGrid
+                          stroke="rgba(255,255,255,0.04)"
+                          vertical={false}
                         />
-                        {benchValue !== undefined && (
-                          <ReferenceLine
-                            y={benchValue}
-                            stroke="rgba(255,255,255,0.2)"
-                            strokeDasharray="3 3"
-                            label={{
-                              value: benchLabel,
-                              position: 'insideTopRight',
-                              fontSize: 9,
-                              fill: 'rgba(255,255,255,0.35)',
-                            }}
-                          />
-                        )}
+                        <XAxis
+                          dataKey="q"
+                          ticks={xTicks}
+                          tick={{ fill: '#475569', fontSize: 9 }}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.07)' }}
+                          tickLine={false}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          domain={['auto', 'auto']}
+                          tick={{ fill: '#475569', fontSize: 9 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={38}
+                          tickFormatter={v => formatTick(v, format)}
+                          tickCount={4}
+                        />
+                        <Tooltip content={<TrendTooltipContent format={format} />} />
+
+                        {/* Selected period highlight */}
+                        <ReferenceArea
+                          x1={hlX1}
+                          x2={hlX2}
+                          fill="rgba(36,163,227,0.07)"
+                          stroke="rgba(36,163,227,0.18)"
+                          strokeWidth={1}
+                        />
+
+                        {/* Benchmark reference lines — all selected */}
+                        {selectedBenchmarkIds.map(benchId => {
+                          const benchValue = metric.benchmarks[benchId]
+                          if (benchValue === undefined) return null
+                          const color = BENCH_COLOR[benchId] ?? 'rgba(148,163,184,0.6)'
+                          const label = BENCH_SHORT[benchId] ?? benchId
+                          return (
+                            <ReferenceLine
+                              key={benchId}
+                              y={benchValue}
+                              stroke={color}
+                              strokeDasharray="4 3"
+                              strokeWidth={1.5}
+                              label={{ value: label, position: 'insideTopRight', fontSize: 8, fill: color }}
+                            />
+                          )
+                        })}
+
                         <Line
                           type="monotone"
                           dataKey="v"
                           stroke={lineColor}
                           strokeWidth={2}
                           dot={false}
+                          activeDot={{ r: 3, fill: lineColor, strokeWidth: 0 }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -683,6 +774,10 @@ function PeriodBar({ timePeriod, onTimePeriodChange }: PeriodBarProps) {
 
       {/* Divider */}
       <div className="w-px h-4 bg-border mx-1" />
+
+      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-1">
+        Time Interval
+      </span>
 
       {/* Period type pills */}
       <div className="flex items-center gap-0.5 bg-surface-2 rounded-lg p-0.5">
