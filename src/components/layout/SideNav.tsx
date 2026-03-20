@@ -190,7 +190,7 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
                   <span className="text-[13px] font-medium truncate flex-1 whitespace-nowrap">
                     {getShortName(h.name)}
                   </span>
-                  <span className="text-[10px] text-slate-600 shrink-0">{h.beds}b</span>
+                  <span className="text-[10px] text-slate-600 shrink-0">{h.beds} Beds</span>
                 </button>
               )
             })}

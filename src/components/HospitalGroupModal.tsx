@@ -5,6 +5,15 @@ import { cn } from '../lib/utils'
 import { HEALTH_SYSTEM } from '../data/facilities'
 import type { HospitalGroup } from '../types/groups'
 
+type HospitalTypeFilter = 'all' | 'academic' | 'community' | 'critical_access'
+
+const TYPE_FILTERS: { value: HospitalTypeFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'academic', label: 'Academic' },
+  { value: 'community', label: 'Community' },
+  { value: 'critical_access', label: 'Critical Access' },
+]
+
 interface HospitalGroupModalProps {
   group: HospitalGroup | null  // null = create mode, non-null = edit mode
   onSave: (group: HospitalGroup) => void
@@ -15,11 +24,11 @@ interface HospitalGroupModalProps {
 function hospitalTypeBadgeClass(type: string): string {
   switch (type) {
     case 'academic':
-      return 'bg-blue-900/40 text-blue-300'
+      return 'bg-premier-muted text-premier border border-premier/20'
     case 'critical_access':
-      return 'bg-amber-900/40 text-amber-300'
+      return 'bg-amber-950/40 text-amber-400 border border-amber-800/30'
     default:
-      return 'bg-surface-3 text-slate-300'
+      return 'bg-surface-3 text-slate-400 border border-border'
   }
 }
 
@@ -40,6 +49,11 @@ export default function HospitalGroupModal({ group, onSave, onDelete, onClose }:
   const [selectedIds, setSelectedIds] = useState<string[]>(group?.hospitalIds ?? [])
 
   const hospitals = HEALTH_SYSTEM.hospitals
+  const [typeFilter, setTypeFilter] = useState<HospitalTypeFilter>('all')
+
+  const filteredHospitals = typeFilter === 'all'
+    ? hospitals
+    : hospitals.filter(h => h.type === typeFilter)
 
   function toggleHospital(id: string) {
     setSelectedIds(prev =>
@@ -110,8 +124,27 @@ export default function HospitalGroupModal({ group, onSave, onDelete, onClose }:
               </span>
               <span className="text-xs text-slate-500">(select at least 2)</span>
             </div>
+
+            {/* Type filter pills */}
+            <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+              {TYPE_FILTERS.map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setTypeFilter(f.value)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-150',
+                    typeFilter === f.value
+                      ? 'bg-premier text-white'
+                      : 'bg-surface-2 text-slate-400 hover:text-slate-200 border border-border'
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-col gap-1">
-              {hospitals.map(h => {
+              {filteredHospitals.map(h => {
                 const isChecked = selectedIds.includes(h.id)
                 return (
                   <div
@@ -139,7 +172,7 @@ export default function HospitalGroupModal({ group, onSave, onDelete, onClose }:
 
                     {/* Bed count badge */}
                     <span className="text-[10px] text-slate-500 shrink-0">
-                      {h.beds}b
+                      {h.beds} Beds
                     </span>
 
                     {/* Hospital type badge */}
