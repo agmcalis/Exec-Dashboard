@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function Step2Metrics({ state, onChange, onNext, onBack }: Props) {
-  const [activeCategory, setActiveCategory] = useState<KpiCategory>('outcomes')
+  const [activeCategory, setActiveCategory] = useState<KpiCategory>('mortality')
 
   const visibleKpis = KPI_DEFS.filter(k => k.category === activeCategory)
   const selectedIds = state.selectedKpiIds

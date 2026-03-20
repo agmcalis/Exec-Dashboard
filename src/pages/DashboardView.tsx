@@ -17,7 +17,7 @@ import type { KpiDef } from '../data/kpis'
 import { BENCHMARK_DEFS } from '../data/benchmarks'
 import type { BenchmarkDef } from '../data/benchmarks'
 import { HEALTH_SYSTEM } from '../data/facilities'
-import { getMetricsForContext } from '../data/mockMetrics'
+import { MOCK_METRICS } from '../data/mockMetrics'
 import type { MetricSnapshot, PerformanceDirection } from '../data/mockMetrics'
 import ViewTabs from '../components/layout/ViewTabs'
 import KpiManageModal from '../components/KpiManageModal'
@@ -721,8 +721,8 @@ export default function DashboardView({
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [isManageKpisOpen, setIsManageKpisOpen] = useState(false)
 
-  // Get metrics for the current context (system / hospital / group)
-  const metricsMap = getMetricsForContext(context)
+  // Build metrics lookup map (context-aware in future; uses flat mock data for now)
+  const metricsMap = Object.fromEntries(MOCK_METRICS.map(m => [m.kpiId, m]))
 
   // Filter to selected KPIs only
   const selectedKpiDefs = KPI_DEFS.filter(k => view.selectedKpiIds.includes(k.id))

@@ -14,7 +14,7 @@ interface KpiManageModalProps {
 
 export default function KpiManageModal({ view, onClose, onSave }: KpiManageModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(view.selectedKpiIds)
-  const [activeCategory, setActiveCategory] = useState<KpiCategory>('outcomes')
+  const [activeCategory, setActiveCategory] = useState<KpiCategory>('mortality')
 
   const visibleKpis = KPI_DEFS.filter(k => k.category === activeCategory)
 

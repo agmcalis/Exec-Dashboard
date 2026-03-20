@@ -1,58 +1,62 @@
-export type KpiCategory = 'outcomes' | 'cms_stars' | 'infections' | 'experience' | 'efficiency'
+export type KpiCategory =
+  | 'mortality'
+  | 'patient_safety'
+  | 'efficiency'
+  | 'readmissions'
+  | 'clinical_effectiveness'
+  | 'health_equity'
 
 export interface KpiDef {
   id: string
   category: KpiCategory
   name: string
   description: string
-  unit: string   // e.g. 'ratio', 'rate per 1,000', '%', 'days', 'rating'
+  unit: string
 }
 
 export const KPI_CATEGORIES: { id: KpiCategory; label: string; shortLabel: string }[] = [
-  { id: 'outcomes',    label: 'General Outcomes',            shortLabel: 'Outcomes'    },
-  { id: 'cms_stars',  label: 'CMS Star Ratings',            shortLabel: 'CMS Stars'   },
-  { id: 'infections', label: 'Hospital-Acquired Infections', shortLabel: 'HAIs'        },
-  { id: 'experience', label: 'Patient Experience',           shortLabel: 'Experience'  },
-  { id: 'efficiency', label: 'Efficiency',                   shortLabel: 'Efficiency'  },
+  { id: 'mortality',              label: 'Mortality',               shortLabel: 'Mortality'       },
+  { id: 'patient_safety',         label: 'Patient Safety',          shortLabel: 'Safety'          },
+  { id: 'efficiency',             label: 'Efficiency',              shortLabel: 'Efficiency'      },
+  { id: 'readmissions',           label: 'Readmissions',            shortLabel: 'Readmissions'    },
+  { id: 'clinical_effectiveness', label: 'Clinical Effectiveness',  shortLabel: 'Effectiveness'  },
+  { id: 'health_equity',          label: 'Health Equity',           shortLabel: 'Health Equity'   },
 ]
 
 export const KPI_DEFS: KpiDef[] = [
-  // General Outcomes
-  { id: 'mortality_oe',      category: 'outcomes',    name: 'Mortality O/E',              description: 'Observed-to-expected in-hospital mortality ratio across all conditions.',         unit: 'ratio'   },
-  { id: 'readmission_oe',    category: 'outcomes',    name: 'Readmission O/E',            description: '30-day all-cause readmission observed-to-expected ratio.',                        unit: 'ratio'   },
-  { id: 'complication_oe',   category: 'outcomes',    name: 'Complications O/E',          description: 'Observed-to-expected rate of in-hospital complications.',                         unit: 'ratio'   },
-  { id: 'psi90',             category: 'outcomes',    name: 'PSI-90 Composite',           description: 'CMS Patient Safety Indicator composite measure of adverse events.',               unit: 'ratio'   },
-  { id: 'mortality_30d',     category: 'outcomes',    name: '30-Day Mortality Rate',      description: 'Risk-adjusted 30-day mortality rate across key conditions.',                      unit: '%'       },
-  { id: 'length_of_stay_oe', category: 'outcomes',    name: 'Length of Stay O/E',         description: 'Observed vs expected LOS ratio, risk-adjusted by case mix.',                     unit: 'ratio'   },
+  // Mortality
+  { id: 'mortality_oe_csa',      category: 'mortality',              name: 'Mortality O/E (CSA)',              description: 'Observed-to-expected in-hospital mortality ratio per CSA Standard methodology.',               unit: 'ratio'         },
+  { id: 'mortality_30d_hf',      category: 'mortality',              name: '30-Day Mortality: Heart Failure',  description: '30-day risk-adjusted mortality rate for heart failure condition encounters.',                   unit: '%'             },
+  { id: 'mortality_30d_stroke',  category: 'mortality',              name: '30-Day Mortality: Stroke',         description: '30-day risk-adjusted mortality rate for stroke condition encounters.',                         unit: '%'             },
+  { id: 'mortality_30d_cardiac', category: 'mortality',              name: '30-Day Mortality: Cardiac Surgery', description: '30-day risk-adjusted mortality rate for cardiology and heart surgery specialty encounters.',  unit: '%'             },
 
-  // CMS Star Ratings
-  { id: 'cms_overall',       category: 'cms_stars',   name: 'Overall Star Rating',        description: 'CMS Overall Hospital Quality Star Rating (1–5 stars).',                          unit: 'rating'  },
-  { id: 'cms_mortality',     category: 'cms_stars',   name: 'Mortality Domain',           description: 'CMS star rating mortality domain score.',                                         unit: 'score'   },
-  { id: 'cms_safety',        category: 'cms_stars',   name: 'Safety of Care Domain',      description: 'CMS star rating safety domain score.',                                            unit: 'score'   },
-  { id: 'cms_readmission',   category: 'cms_stars',   name: 'Readmission Domain',         description: 'CMS star rating readmission domain score.',                                       unit: 'score'   },
-  { id: 'cms_experience',    category: 'cms_stars',   name: 'Patient Experience Domain',  description: 'CMS star rating patient experience domain score.',                                unit: 'score'   },
-  { id: 'cms_timely',        category: 'cms_stars',   name: 'Timely & Effective Care',    description: 'CMS star rating timely and effective care domain score.',                         unit: 'score'   },
-
-  // HAIs
-  { id: 'clabsi',            category: 'infections',  name: 'CLABSI SIR',                 description: 'Central Line-Associated Bloodstream Infection standardized infection ratio.',     unit: 'ratio'   },
-  { id: 'cauti',             category: 'infections',  name: 'CAUTI SIR',                  description: 'Catheter-Associated Urinary Tract Infection standardized infection ratio.',       unit: 'ratio'   },
-  { id: 'ssi_colon',         category: 'infections',  name: 'SSI – Colon SIR',            description: 'Surgical Site Infection (colon surgery) standardized infection ratio.',          unit: 'ratio'   },
-  { id: 'ssi_hyst',          category: 'infections',  name: 'SSI – Hysterectomy SIR',     description: 'Surgical Site Infection (abdominal hysterectomy) standardized infection ratio.', unit: 'ratio'   },
-  { id: 'mrsa',              category: 'infections',  name: 'MRSA Bacteremia SIR',        description: 'Methicillin-resistant Staphylococcus aureus bacteremia standardized infection ratio.', unit: 'ratio' },
-  { id: 'cdiff',             category: 'infections',  name: 'C. diff SIR',                description: 'Clostridioides difficile infection standardized infection ratio.',                unit: 'ratio'   },
-
-  // Patient Experience (HCAHPS)
-  { id: 'hcahps_overall',    category: 'experience',  name: 'Overall Hospital Rating',    description: 'HCAHPS overall hospital rating (patients rating 9 or 10 out of 10).',           unit: '%'       },
-  { id: 'hcahps_nurses',     category: 'experience',  name: 'Nurse Communication',        description: 'HCAHPS composite: how well nurses communicated with patients.',                  unit: '%'       },
-  { id: 'hcahps_doctors',    category: 'experience',  name: 'Doctor Communication',       description: 'HCAHPS composite: how well doctors communicated with patients.',                 unit: '%'       },
-  { id: 'hcahps_staff',      category: 'experience',  name: 'Staff Responsiveness',       description: 'HCAHPS composite: responsiveness of hospital staff.',                            unit: '%'       },
-  { id: 'hcahps_meds',       category: 'experience',  name: 'Medication Communication',   description: 'HCAHPS composite: communication about medicines.',                               unit: '%'       },
-  { id: 'hcahps_discharge',  category: 'experience',  name: 'Discharge Information',      description: 'HCAHPS composite: patients who received written discharge instructions.',        unit: '%'       },
+  // Patient Safety
+  { id: 'complication_oe_csa',   category: 'patient_safety',         name: 'Complications O/E (CSA)',          description: 'Observed-to-expected rate of in-hospital complications per CSA Standard methodology.',        unit: 'ratio'         },
+  { id: 'psi_03',                category: 'patient_safety',         name: 'PSI-03 Pressure Ulcer',            description: 'Observed rate of pressure ulcer per 1,000 eligible discharges (PSI-03).',                    unit: 'rate per 1,000'},
+  { id: 'psi_04',                category: 'patient_safety',         name: 'PSI-04 Death in Surgical Pts',     description: 'Death among surgical inpatients with serious treatable complications, observed rate per 1,000.', unit: 'rate per 1,000'},
+  { id: 'psi_11',                category: 'patient_safety',         name: 'PSI-11 Post Respiratory Failure',  description: 'Observed rate of postoperative respiratory failure per 1,000 eligible surgical discharges.',    unit: 'rate per 1,000'},
 
   // Efficiency
-  { id: 'alos',              category: 'efficiency',  name: 'Avg Length of Stay',         description: 'Average inpatient length of stay across all cases.',                             unit: 'days'    },
-  { id: 'cmi',               category: 'efficiency',  name: 'Case Mix Index',             description: 'Average DRG weight reflecting resource intensity of the patient population.',    unit: 'index'   },
-  { id: 'cost_per_case',     category: 'efficiency',  name: 'Cost per Case',              description: 'Average direct cost per inpatient discharge.',                                   unit: '$/case'  },
-  { id: 'or_utilization',    category: 'efficiency',  name: 'OR Utilization',             description: 'Percentage of allocated OR block time utilized.',                                unit: '%'       },
-  { id: 'ed_lwbs',           category: 'efficiency',  name: 'ED Left Without Being Seen', description: 'Percentage of ED patients who left before receiving treatment.',                 unit: '%'       },
+  { id: 'los_geo_oe',            category: 'efficiency',             name: 'LOS Geometric O/E (CSA)',          description: 'Geometric mean length of stay observed-to-expected ratio per CSA Standard methodology.',       unit: 'ratio'         },
+  { id: 'cost_case_geo_oe',      category: 'efficiency',             name: 'Cost/Case Geometric O/E (CSA)',    description: 'Geometric mean cost per case observed-to-expected ratio per CSA Standard methodology.',        unit: 'ratio'         },
+  { id: 'icu_return_48h',        category: 'efficiency',             name: 'ICU Returns within 48 Hours',      description: 'Percentage of ICU encounters with an unplanned return to ICU within 48 hours of transfer.',    unit: '%'             },
+  { id: 'icu_admission',         category: 'efficiency',             name: 'ICU Admission Rate',               description: 'Percentage of hospital encounters with at least one ICU admission.',                          unit: '%'             },
+
+  // Readmissions
+  { id: 'readmit_oe_csa',        category: 'readmissions',           name: '30-Day Readmission O/E (CSA)',      description: 'All-cause 30-day readmission observed-to-expected ratio per CSA Standard methodology.',        unit: 'ratio'         },
+  { id: 'readmit_hw_oe_csa',     category: 'readmissions',           name: 'Hospital-Wide Readmission O/E (CSA)', description: 'All-cause hospital-wide 30-day readmission O/E ratio per CSA Standard methodology.',       unit: 'ratio'         },
+  { id: 'ed_return_7d',          category: 'readmissions',           name: 'ED Return ≤7 Days',                description: 'Observed percentage of ED cases with a return ED visit within 7 days.',                      unit: '%'             },
+  { id: 'ed_return_ip_30d',      category: 'readmissions',           name: 'ED Return + IP Admission ≤30 Days', description: 'Observed percentage of ED cases returning and admitted as acute inpatient within 30 days.',  unit: '%'             },
+
+  // Clinical Effectiveness
+  { id: 'sepsis_bundle',         category: 'clinical_effectiveness', name: 'Severe Sepsis/Septic Shock Bundle', description: 'Percentage of severe sepsis and septic shock encounters receiving the early management bundle.', unit: '%'            },
+  { id: 'vte_ppx',               category: 'clinical_effectiveness', name: 'VTE Pharmacologic Prophylaxis',    description: 'Percentage of eligible encounters receiving appropriate pharmacologic VTE prophylaxis.',       unit: '%'             },
+  { id: 'ha_vte',                category: 'clinical_effectiveness', name: 'Hospital-Associated VTE',          description: 'Observed rate of hospital-associated venous thromboembolism events per 1,000 encounters.',    unit: 'rate per 1,000'},
+  { id: 'oud_pharmacotherapy',   category: 'clinical_effectiveness', name: 'OUD Pharmacotherapy Rate',         description: 'Percentage of opioid use disorder encounters where pharmacotherapy was provided.',            unit: '%'             },
+
+  // Health Equity
+  { id: 'sdoh_dx',               category: 'health_equity',          name: 'SDOH Diagnosis Capture Rate',      description: 'Percentage of patients with at least one social determinant of health diagnosis documented.',  unit: '%'             },
+  { id: 'vulnerability_idx_pct', category: 'health_equity',          name: 'Vulnerability Index Derivation',   description: 'Percentage of patients for whom both social and clinical vulnerability indexes were derived.',  unit: '%'             },
+  { id: 'clinical_vuln_idx',     category: 'health_equity',          name: 'Clinical Vulnerability Index',     description: 'Composite index reflecting the average clinical vulnerability score across the patient population.', unit: 'index'       },
+  { id: 'social_vuln_idx',       category: 'health_equity',          name: 'Social Vulnerability Index',       description: 'Composite index reflecting the average social vulnerability score across the patient population.', unit: 'index'       },
 ]
