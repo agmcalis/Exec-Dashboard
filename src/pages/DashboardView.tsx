@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown } from 'lucide-react'
+import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown, Share2, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   LineChart,
   Line,
@@ -14,6 +14,9 @@ import {
   YAxis,
 } from 'recharts'
 import type { SavedView, ViewContext } from '../types/wizard'
+import type { MockUser } from '../data/mockUsers'
+import ShareViewModal from '../components/sharing/ShareViewModal'
+import type { ViewConfig } from '../store/appStore'
 import { DEFAULT_TIME_PERIOD } from '../types/wizard'
 import type { TimePeriod, PeriodType } from '../types/wizard'
 import { KPI_DEFS, KPI_CATEGORIES } from '../data/kpis'
@@ -919,9 +922,12 @@ interface ViewContextBarProps {
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onManageKpis: () => void
+  onShare?: () => void
+  sharedBy?: MockUser
+  isReadOnly?: boolean
 }
 
-function ViewContextBar({ context, viewMode, onViewModeChange, onManageKpis }: ViewContextBarProps) {
+function ViewContextBar({ context, viewMode, onViewModeChange, onManageKpis, onShare, sharedBy, isReadOnly }: ViewContextBarProps) {
   let contextLabel = ''
 
   if (context.type === 'system') {
@@ -946,15 +952,38 @@ function ViewContextBar({ context, viewMode, onViewModeChange, onManageKpis }: V
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Manage KPIs button */}
-        <button
-          onClick={onManageKpis}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white border border-border hover:border-border-hi bg-transparent hover:bg-surface-2 px-3 py-1.5 rounded-lg transition-all duration-150"
-          aria-label="Manage KPIs"
-        >
-          <Settings2 size={12} strokeWidth={2} />
-          Manage KPIs
-        </button>
+        {/* Read-only: show shared-by badge; otherwise show Manage KPIs */}
+        {isReadOnly && sharedBy ? (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Lock size={11} strokeWidth={2} className="text-slate-600" />
+            <span>Shared by</span>
+            <div className="w-5 h-5 rounded-full bg-surface-3 flex items-center justify-center text-[9px] font-bold text-slate-300">
+              {sharedBy.initials}
+            </div>
+            <span className="text-slate-400">{sharedBy.firstName}</span>
+          </div>
+        ) : (
+          <button
+            onClick={onManageKpis}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white border border-border hover:border-border-hi bg-transparent hover:bg-surface-2 px-3 py-1.5 rounded-lg transition-all duration-150"
+            aria-label="Manage KPIs"
+          >
+            <Settings2 size={12} strokeWidth={2} />
+            Manage KPIs
+          </button>
+        )}
+
+        {/* Share button — only for non-read-only views */}
+        {!isReadOnly && onShare && (
+          <button
+            onClick={onShare}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white border border-border hover:border-border-hi bg-transparent hover:bg-surface-2 px-3 py-1.5 rounded-lg transition-all duration-150"
+            aria-label="Share view"
+          >
+            <Share2 size={12} strokeWidth={2} />
+            Share
+          </button>
+        )}
 
         {/* View mode segmented control */}
         <div className="flex items-center bg-surface-2 rounded-lg p-0.5 gap-0.5">
@@ -981,15 +1010,17 @@ function ViewContextBar({ context, viewMode, onViewModeChange, onManageKpis }: V
 // ─── DashboardView ────────────────────────────────────────────────────────────
 
 interface DashboardViewProps {
-  view: SavedView
-  views: SavedView[]
+  view: ViewConfig
+  views: ViewConfig[]
   context: ViewContext
   activeViewId: string | null
   onSelectView: (id: string) => void
   onNewView: () => void
-  onUpdateView: (viewId: string, updates: Partial<SavedView>) => void
+  onUpdateView: (viewId: string, kpiIds: string[], benchmarkIds: string[]) => void
   onDeleteView: (viewId: string) => void
   onRenameView: (viewId: string, name: string) => void
+  onShareView: (viewId: string, sharedWith: 'all' | string[]) => void
+  currentUser: MockUser
 }
 
 export default function DashboardView({
@@ -1002,12 +1033,14 @@ export default function DashboardView({
   onUpdateView,
   onDeleteView,
   onRenameView,
+  onShareView,
+  currentUser,
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>(
-    view.timePeriod ?? DEFAULT_TIME_PERIOD
-  )
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(DEFAULT_TIME_PERIOD)
   const [isManageKpisOpen, setIsManageKpisOpen] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [shareSuccessMsg, setShareSuccessMsg] = useState(false)
 
   // Build metrics lookup map (context-aware in future; uses flat mock data for now)
   const metricsMap = Object.fromEntries(MOCK_METRICS.map(m => [m.kpiId, m]))
@@ -1022,7 +1055,23 @@ export default function DashboardView({
   })).filter(g => g.kpis.length > 0)
 
   function handleSaveKpis(newIds: string[]) {
-    onUpdateView(view.id, { selectedKpiIds: newIds })
+    onUpdateView(view.id, newIds, view.selectedBenchmarkIds)
+  }
+
+  function handleShare(sharedWith: 'all' | string[]) {
+    onShareView(view.id, sharedWith)
+    setShowShareModal(false)
+    setShareSuccessMsg(true)
+    setTimeout(() => setShareSuccessMsg(false), 2000)
+  }
+
+  // Adapt ViewConfig → SavedView shape for KpiManageModal
+  const savedViewForModal: SavedView = {
+    id: view.id,
+    name: view.name,
+    selectedKpiIds: view.selectedKpiIds,
+    selectedBenchmarkIds: view.selectedBenchmarkIds,
+    createdAt: Date.now(),
   }
 
   return (
@@ -1037,12 +1086,30 @@ export default function DashboardView({
         onRenameView={onRenameView}
       />
 
+      {/* Share success banner */}
+      <AnimatePresence>
+        {shareSuccessMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="bg-better/10 border border-better/20 text-better text-xs font-medium px-4 py-2 text-center shrink-0"
+          >
+            View shared successfully
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Context / scope bar */}
       <ViewContextBar
         context={context}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onManageKpis={() => setIsManageKpisOpen(true)}
+        onShare={view.isReadOnly ? undefined : () => setShowShareModal(true)}
+        sharedBy={view.sharedBy}
+        isReadOnly={view.isReadOnly}
       />
 
       {/* Period bar */}
@@ -1053,13 +1120,15 @@ export default function DashboardView({
         {selectedKpiDefs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <p className="text-slate-500 text-sm">No metrics selected.</p>
-            <button
-              onClick={() => setIsManageKpisOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-premier hover:text-premier-hover transition-colors"
-            >
-              <Settings2 size={12} strokeWidth={2} />
-              Manage KPIs
-            </button>
+            {!view.isReadOnly && (
+              <button
+                onClick={() => setIsManageKpisOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-premier hover:text-premier-hover transition-colors"
+              >
+                <Settings2 size={12} strokeWidth={2} />
+                Manage KPIs
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -1092,14 +1161,26 @@ export default function DashboardView({
         )}
       </div>
 
-      {/* KPI management modal */}
-      {isManageKpisOpen && (
+      {/* KPI management modal — only for editable views */}
+      {isManageKpisOpen && !view.isReadOnly && (
         <KpiManageModal
-          view={view}
+          view={savedViewForModal}
           onClose={() => setIsManageKpisOpen(false)}
           onSave={handleSaveKpis}
         />
       )}
+
+      {/* Share modal */}
+      <AnimatePresence>
+        {showShareModal && !view.isReadOnly && (
+          <ShareViewModal
+            view={view}
+            currentUser={currentUser}
+            onClose={() => setShowShareModal(false)}
+            onShare={handleShare}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

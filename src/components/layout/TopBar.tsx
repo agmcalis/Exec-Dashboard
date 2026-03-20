@@ -1,7 +1,14 @@
 import premierLogo from '../../assets/premier-logo.svg'
+import UserSwitcher from './UserSwitcher'
+import type { MockUser } from '../../data/mockUsers'
+
+interface TopBarProps {
+  currentUser: MockUser
+  onUserChange: (userId: string) => void
+}
 
 // Premier-branded top bar
-export default function TopBar() {
+export default function TopBar({ currentUser, onUserChange }: TopBarProps) {
   return (
     <header className="h-14 flex items-center px-6 border-b border-border bg-surface shrink-0">
       <div className="flex items-center gap-3">
@@ -15,6 +22,10 @@ export default function TopBar() {
             by Premier
           </span>
         </div>
+      </div>
+
+      <div className="ml-auto">
+        <UserSwitcher currentUser={currentUser} onUserChange={onUserChange} />
       </div>
     </header>
   )

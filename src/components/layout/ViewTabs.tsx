@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, X, Pencil } from 'lucide-react'
-import type { SavedView } from '../../types/wizard'
+import { Plus, X, Pencil, Lock } from 'lucide-react'
+import type { ViewConfig } from '../../store/appStore'
 
 interface ViewTabsProps {
-  views: SavedView[]
+  views: ViewConfig[]
   activeViewId: string | null
   onSelect: (id: string) => void
   onNew: () => void
@@ -24,7 +24,8 @@ export default function ViewTabs({ views, activeViewId, onSelect, onNew, onDelet
     }
   }, [editingId])
 
-  function startEditing(view: SavedView) {
+  function startEditing(view: ViewConfig) {
+    if (view.isReadOnly) return
     setEditingId(view.id)
     setEditingName(view.name)
   }
@@ -67,6 +68,11 @@ export default function ViewTabs({ views, activeViewId, onSelect, onNew, onDelet
                 if (!isEditing) onSelect(view.id)
               }}
             >
+              {/* Lock icon for read-only tabs */}
+              {view.isReadOnly && (
+                <Lock size={10} strokeWidth={2} className="text-slate-600 shrink-0" />
+              )}
+
               {/* Tab label or rename input */}
               {isEditing ? (
                 <input
@@ -93,8 +99,8 @@ export default function ViewTabs({ views, activeViewId, onSelect, onNew, onDelet
                 </span>
               )}
 
-              {/* Pencil icon — only on active tab, not while editing */}
-              {isActive && !isEditing && (
+              {/* Pencil icon — only on active, editable, non-editing tabs */}
+              {isActive && !isEditing && !view.isReadOnly && (
                 <button
                   onClick={e => {
                     e.stopPropagation()
