@@ -32,7 +32,9 @@
       "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add src/pages/DashboardView.tsx && git commit -m \"\"Improve period bar and tooltip UX:*)",
       "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add src/pages/DashboardView.tsx src/data/mockMetrics.ts && git commit -m \"\"Fix trend chart value alignment, null labels, and enrich tooltip:*)",
       "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add src/pages/DashboardView.tsx && git commit -m \"\"Improve readability of period bar and trend chart labels:*)",
-      "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add -A && git commit -m \"\"Add KPI view sharing system:*)"
+      "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add -A && git commit -m \"\"Add KPI view sharing system:*)",
+      "Bash(bash -c 'rm -f \"\"/Users/andrew/Claude/Exec Dashboard/.git/index.lock\"\" && cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add src/store/appStore.ts src/App.tsx && git commit -m \"\"Per-user views and KPI card label order fix:*)",
+      "Bash(bash -c 'cd \"\"/Users/andrew/Claude/Exec Dashboard\"\" && git add src/App.tsx && git commit -m \"\"KPI unit label: expand % to Percentage \\(%\\):*)"
     ]
   }
 }

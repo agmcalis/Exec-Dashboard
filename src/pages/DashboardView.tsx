@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown, Share2, Lock } from 'lucide-react'
+import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown, Share2, Lock, Flag } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -104,9 +104,10 @@ interface KpiCardProps {
   selectedBenchmarkIds: string[]
   timePeriod: TimePeriod
   delay: number
+  onCreateTask?: (kpiId: string) => void
 }
 
-function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay }: KpiCardProps) {
+function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay, onCreateTask }: KpiCardProps) {
   const { current, prior, periodLabel } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
   const borderClass = getCardBorderClass(current, metric, selectedBenchmarkIds)
 
@@ -145,7 +146,7 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay }: K
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay, ease: [0.4, 0, 0.2, 1] }}
-      className={`bg-surface border border-border rounded-2xl p-5 flex flex-col gap-3 ${borderClass}`}
+      className={`relative group bg-surface border border-border rounded-2xl p-5 flex flex-col gap-3 ${borderClass}`}
     >
       {/* Top — KPI name */}
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider leading-none">
@@ -201,6 +202,18 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay }: K
           })}
         </div>
       )}
+
+      {/* Create task button — appears on hover */}
+      {onCreateTask && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onCreateTask(metric.kpiId) }}
+          className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-slate-500 hover:text-premier"
+          title="Create task"
+        >
+          <Flag size={11} strokeWidth={2} />
+          Task
+        </button>
+      )}
     </motion.div>
   )
 }
@@ -212,9 +225,10 @@ interface CardContentProps {
   selectedBenchmarkIds: string[]
   metricsMap: Record<string, MetricSnapshot>
   timePeriod: TimePeriod
+  onCreateTask?: (kpiId: string) => void
 }
 
-function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: CardContentProps) {
+function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod, onCreateTask }: CardContentProps) {
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
@@ -250,6 +264,7 @@ function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: 
                     selectedBenchmarkIds={selectedBenchmarkIds}
                     timePeriod={timePeriod}
                     delay={cardDelay}
+                    onCreateTask={onCreateTask}
                   />
                 )
               })}
@@ -1021,6 +1036,7 @@ interface DashboardViewProps {
   onRenameView: (viewId: string, name: string) => void
   onShareView: (viewId: string, sharedWith: 'all' | string[]) => void
   currentUser: MockUser
+  onCreateTask?: (kpiId: string) => void
 }
 
 export default function DashboardView({
@@ -1035,6 +1051,7 @@ export default function DashboardView({
   onRenameView,
   onShareView,
   currentUser,
+  onCreateTask,
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [timePeriod, setTimePeriod] = useState<TimePeriod>(DEFAULT_TIME_PERIOD)
@@ -1138,6 +1155,7 @@ export default function DashboardView({
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
                 metricsMap={metricsMap}
                 timePeriod={timePeriod}
+                onCreateTask={onCreateTask}
               />
             )}
             {viewMode === 'table' && (

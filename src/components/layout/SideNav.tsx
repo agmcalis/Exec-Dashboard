@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Network, Building2, Layers, ChevronLeft, ChevronRight, Plus, Pencil } from 'lucide-react'
+import { Network, Building2, Layers, ChevronLeft, ChevronRight, Plus, Pencil, CheckSquare } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { HEALTH_SYSTEM } from '../../data/facilities'
 import type { ViewContext } from '../../types/wizard'
@@ -12,9 +12,12 @@ interface SideNavProps {
   groups: HospitalGroup[]
   onCreateGroup: () => void
   onEditGroup: (group: HospitalGroup) => void
+  mainView?: 'dashboard' | 'tasks'
+  onNavigateToTasks?: () => void
+  assignedTaskCount?: number
 }
 
-export default function SideNav({ context, onChange, groups, onCreateGroup, onEditGroup }: SideNavProps) {
+export default function SideNav({ context, onChange, groups, onCreateGroup, onEditGroup, mainView, onNavigateToTasks, assignedTaskCount }: SideNavProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
 
@@ -306,6 +309,54 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
               <Layers size={14} strokeWidth={2} />
             </button>
           </div>
+        )}
+
+        {/* Tasks nav */}
+        {onNavigateToTasks && (
+          <>
+            <div className="h-px bg-border mx-3 my-2" />
+            {isOpen ? (
+              <div className="px-2 pb-2">
+                <button
+                  onClick={onNavigateToTasks}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    mainView === 'tasks'
+                      ? 'bg-premier-muted text-premier'
+                      : 'text-slate-400 hover:text-white hover:bg-surface-2'
+                  )}
+                >
+                  <CheckSquare size={15} strokeWidth={2} className="shrink-0" />
+                  <span className="truncate">Tasks</span>
+                  {(assignedTaskCount ?? 0) > 0 && (
+                    <span className="ml-auto text-[10px] font-bold bg-premier text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                      {assignedTaskCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1 px-2 pb-2">
+                <button
+                  onClick={onNavigateToTasks}
+                  title="Tasks"
+                  className={cn(
+                    'relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150',
+                    mainView === 'tasks'
+                      ? 'bg-premier-muted text-premier'
+                      : 'text-slate-600 hover:text-slate-200 hover:bg-surface-2'
+                  )}
+                >
+                  <CheckSquare size={14} strokeWidth={2} />
+                  {(assignedTaskCount ?? 0) > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-premier text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                      {assignedTaskCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </motion.aside>

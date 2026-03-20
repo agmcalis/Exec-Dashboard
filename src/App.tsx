@@ -7,8 +7,11 @@ import EmptyState from './pages/EmptyState'
 import DashboardView from './pages/DashboardView'
 import HospitalGroupModal from './components/HospitalGroupModal'
 import SharedWithMePanel from './components/sharing/SharedWithMePanel'
+import TasksView from './pages/tasks/TasksView'
+import CreateTaskModal from './pages/tasks/CreateTaskModal'
 import { useAppStore, getSharedWithMe, isViewAlreadyAdded } from './store/appStore'
 import type { ViewConfig } from './store/appStore'
+import { useTasksStore } from './store/tasksStore'
 import { MOCK_USERS } from './data/mockUsers'
 import { KPI_CATEGORIES, KPI_DEFS } from './data/kpis'
 import type { KpiCategory } from './data/kpis'
@@ -391,11 +394,14 @@ function AddViewModal({ onClose, onAdd, onAddShared, sharedViewCount, sharedView
 export default function App() {
   const store = useAppStore()
   const { viewsByUser, currentUserId, addView, removeView, renameView, updateViewKpis, shareView, addSharedViewAsTab, removeSharedTab, setCurrentUser } = store
+  const { tasks, addTask } = useTasksStore()
 
   const currentUser = MOCK_USERS.find(u => u.id === currentUserId) ?? MOCK_USERS[0]
   const views = viewsByUser[currentUserId] ?? []
 
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
+  const [mainView, setMainView] = useState<'dashboard' | 'tasks'>('dashboard')
+  const [createTaskKpiId, setCreateTaskKpiId] = useState<string | null | undefined>(undefined)
 
   // Keep activeViewId in sync when views or currentUser change
   useEffect(() => {
@@ -492,6 +498,16 @@ export default function App() {
     setActiveViewId(nextViews.length > 0 ? nextViews[0].id : null)
   }
 
+  const assignedTaskCount = tasks.filter(t => t.assignedTo.includes(currentUserId)).length
+
+  function handleOpenCreateTask(kpiId: string | null) {
+    setCreateTaskKpiId(kpiId)
+  }
+
+  function handleCreateTaskFromKpiCard(kpiId: string) {
+    setCreateTaskKpiId(kpiId)
+  }
+
   const sharedWithMe = getSharedWithMe(store)
   const alreadyAddedIds = new Set(
     views.filter(v => v.sharedFromId).map(v => v.sharedFromId as string)
@@ -534,21 +550,33 @@ export default function App() {
                 groups={groups}
                 onCreateGroup={() => setGroupModalState({ open: true, editing: null })}
                 onEditGroup={(g) => setGroupModalState({ open: true, editing: g })}
+                mainView={mainView}
+                onNavigateToTasks={() => setMainView('tasks')}
+                assignedTaskCount={assignedTaskCount}
               />
               <div className="flex-1 overflow-hidden flex flex-col">
-                <DashboardView
-                  view={activeView}
-                  views={views}
-                  context={context}
-                  activeViewId={activeViewId}
-                  onSelectView={setActiveViewId}
-                  onNewView={() => setShowAddViewModal(true)}
-                  onUpdateView={handleUpdateView}
-                  onDeleteView={handleDeleteView}
-                  onRenameView={renameView}
-                  onShareView={handleShareView}
-                  currentUser={currentUser}
-                />
+                {mainView === 'dashboard' && (
+                  <DashboardView
+                    view={activeView}
+                    views={views}
+                    context={context}
+                    activeViewId={activeViewId}
+                    onSelectView={setActiveViewId}
+                    onNewView={() => setShowAddViewModal(true)}
+                    onUpdateView={handleUpdateView}
+                    onDeleteView={handleDeleteView}
+                    onRenameView={renameView}
+                    onShareView={handleShareView}
+                    currentUser={currentUser}
+                    onCreateTask={handleCreateTaskFromKpiCard}
+                  />
+                )}
+                {mainView === 'tasks' && (
+                  <TasksView
+                    currentUserId={currentUserId}
+                    onCreateTask={handleOpenCreateTask}
+                  />
+                )}
               </div>
             </motion.div>
           )}
@@ -577,6 +605,19 @@ export default function App() {
             onSave={handleSaveGroup}
             onDelete={handleDeleteGroup}
             onClose={() => setGroupModalState({ open: false, editing: null })}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create Task Modal */}
+      <AnimatePresence>
+        {createTaskKpiId !== undefined && (
+          <CreateTaskModal
+            open={createTaskKpiId !== undefined}
+            onClose={() => setCreateTaskKpiId(undefined)}
+            onSave={(task) => { addTask(task); setCreateTaskKpiId(undefined) }}
+            currentUserId={currentUserId}
+            prefillKpiId={createTaskKpiId}
           />
         )}
       </AnimatePresence>
