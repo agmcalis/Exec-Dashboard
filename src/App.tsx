@@ -551,6 +551,7 @@ export default function App() {
                 onCreateGroup={() => setGroupModalState({ open: true, editing: null })}
                 onEditGroup={(g) => setGroupModalState({ open: true, editing: g })}
                 mainView={mainView}
+                onNavigateToDashboard={() => setMainView('dashboard')}
                 onNavigateToTasks={() => setMainView('tasks')}
                 assignedTaskCount={assignedTaskCount}
               />
