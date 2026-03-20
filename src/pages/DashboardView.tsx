@@ -572,14 +572,16 @@ interface TrendTooltipPayload {
 interface TrendTooltipProps {
   active?: boolean
   payload?: TrendTooltipPayload[]
+  label?: string
   format: MetricSnapshot['format']
 }
 
-function TrendTooltipContent({ active, payload, format }: TrendTooltipProps) {
+function TrendTooltipContent({ active, payload, label, format }: TrendTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   return (
-    <div style={{ background: '#0C2035', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, fontSize: 11, padding: '4px 8px', color: '#fff' }}>
-      {formatValue(payload[0].value, format)}
+    <div style={{ background: '#0C2035', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, fontSize: 11, padding: '6px 10px', color: '#fff', lineHeight: '1.6' }}>
+      {label && <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>{label}</div>}
+      <div>{formatValue(payload[0].value, format)}</div>
     </div>
   )
 }
@@ -656,12 +658,6 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: Tr
                         </span>
                       </div>
                     </div>
-
-                    {/* Selected Discharge Period */}
-                    <p className="text-[10px] text-slate-500 leading-none">
-                      <span className="text-slate-600">Selected Discharge Period: </span>
-                      {dateRange}
-                    </p>
 
                     {/* Chart */}
                     <ResponsiveContainer width="100%" height={130}>
@@ -752,8 +748,9 @@ interface PeriodBarProps {
 }
 
 function PeriodBar({ timePeriod, onTimePeriodChange }: PeriodBarProps) {
+  const dateRange = getPeriodDateRange(timePeriod.endingQuarter, timePeriod.type)
   return (
-    <div className="flex items-center gap-3 px-5 py-2.5 border-b border-border bg-surface/40">
+    <div className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-2.5 border-b border-border bg-surface/40">
       <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-1">
         Ending Period
       </span>
@@ -796,6 +793,15 @@ function PeriodBar({ timePeriod, onTimePeriodChange }: PeriodBarProps) {
           </button>
         ))}
       </div>
+
+      {/* Divider */}
+      <div className="w-px h-4 bg-border mx-1" />
+
+      {/* Selected discharge period */}
+      <span className="text-[11px] text-slate-500">
+        <span className="font-semibold uppercase tracking-wider text-slate-600">Selected Discharge Period: </span>
+        {dateRange}
+      </span>
     </div>
   )
 }
