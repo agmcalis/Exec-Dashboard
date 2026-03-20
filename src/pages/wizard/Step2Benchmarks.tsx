@@ -56,6 +56,25 @@ export default function Step2Benchmarks({ state, onChange, onNext, onBack }: Pro
         </p>
       </motion.div>
 
+      {/* View name input */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08, duration: 0.28 }}
+        className="w-full mb-6"
+      >
+        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+          Name this view
+        </label>
+        <input
+          type="text"
+          value={state.viewName}
+          onChange={e => onChange({ viewName: e.target.value })}
+          placeholder="e.g. System Overview, HAI Focus, Q1 Review…"
+          className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-premier transition-colors"
+        />
+      </motion.div>
+
       {/* Benchmark cards */}
       <div className="flex flex-col gap-3 w-full">
         {BENCHMARK_DEFS.map((benchmark, i) => {

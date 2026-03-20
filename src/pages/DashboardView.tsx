@@ -704,6 +704,7 @@ interface DashboardViewProps {
   onNewView: () => void
   onUpdateView: (viewId: string, updates: Partial<SavedView>) => void
   onDeleteView: (viewId: string) => void
+  onRenameView: (viewId: string, name: string) => void
 }
 
 export default function DashboardView({
@@ -715,6 +716,7 @@ export default function DashboardView({
   onNewView,
   onUpdateView,
   onDeleteView,
+  onRenameView,
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [isManageKpisOpen, setIsManageKpisOpen] = useState(false)
@@ -744,6 +746,7 @@ export default function DashboardView({
         onSelect={onSelectView}
         onNew={onNewView}
         onDelete={onDeleteView}
+        onRenameView={onRenameView}
       />
 
       {/* Context / scope bar */}
