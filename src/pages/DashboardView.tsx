@@ -164,7 +164,7 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay }: K
             <DeltaIcon size={10} strokeWidth={2.5} />
             {formatValue(deltaAbs, metric.format)}
           </span>
-          <span className="text-[10px] text-slate-600">{periodLabel}</span>
+          <span className="text-[10px] text-slate-400">{periodLabel}</span>
         </div>
       </div>
 
@@ -181,7 +181,7 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay }: K
 
             return (
               <div key={benchId} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-500 truncate">{label}</span>
+                <span className="text-xs text-slate-300 truncate">{label}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-xs text-slate-400">
                     {formatValue(benchValue, metric.format)}
@@ -444,7 +444,7 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, t
                               <DeltaIcon size={10} strokeWidth={2.5} />
                               {formatValue(deltaAbs, metric.format)}
                             </span>
-                            <span className="text-[10px] text-slate-600 px-2">{periodLabel}</span>
+                            <span className="text-[10px] text-slate-400 px-2">{periodLabel}</span>
                           </div>
                         </td>
 
