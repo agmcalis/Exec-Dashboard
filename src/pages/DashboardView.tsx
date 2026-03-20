@@ -36,12 +36,13 @@ interface GroupedCategory {
 function formatValue(value: number, format: MetricSnapshot['format']): string {
   switch (format) {
     case 'ratio':    return value.toFixed(2)
-    case 'percent':  return `${value}%`
+    case 'percent':  return `${parseFloat(value.toFixed(2))}%`
     case 'stars':    return `${value} ★`
     case 'score':    return value.toFixed(1)
-    case 'days':     return `${value}d`
+    case 'days':     return `${value.toFixed(1)}d`
     case 'index':    return value.toFixed(2)
-    case 'currency': return `$${value.toLocaleString()}`
+    case 'currency': return `$${Math.round(value).toLocaleString()}`
+    case 'rate':     return parseFloat(value.toFixed(2)).toString()
     default:         return String(value)
   }
 }
