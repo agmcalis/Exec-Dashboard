@@ -1,3 +1,15 @@
+export type PeriodType = '1Q' | 'R12' | 'YTD' | 'R36'
+
+export interface TimePeriod {
+  type: PeriodType
+  endingQuarter: string   // e.g. '4Q2025'
+}
+
+export const DEFAULT_TIME_PERIOD: TimePeriod = {
+  type: 'R12',
+  endingQuarter: '4Q2025',
+}
+
 export type ContextType = 'system' | 'hospital' | 'group'
 
 export interface ViewContext {
@@ -20,6 +32,7 @@ export interface SavedView {
   selectedKpiIds: string[]
   selectedBenchmarkIds: string[]
   createdAt: number
+  timePeriod?: TimePeriod
 }
 
 export const INITIAL_WIZARD_STATE: WizardState = {

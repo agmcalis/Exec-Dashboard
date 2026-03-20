@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2 } from 'lucide-react'
+import { TrendingDown, TrendingUp, Minus, LayoutGrid, TableProperties, TrendingUp as TrendingUpIcon, Settings2, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -12,12 +12,14 @@ import {
   YAxis,
 } from 'recharts'
 import type { SavedView, ViewContext } from '../types/wizard'
+import { DEFAULT_TIME_PERIOD } from '../types/wizard'
+import type { TimePeriod, PeriodType } from '../types/wizard'
 import { KPI_DEFS, KPI_CATEGORIES } from '../data/kpis'
 import type { KpiDef } from '../data/kpis'
 import { BENCHMARK_DEFS } from '../data/benchmarks'
 import type { BenchmarkDef } from '../data/benchmarks'
 import { HEALTH_SYSTEM } from '../data/facilities'
-import { MOCK_METRICS } from '../data/mockMetrics'
+import { MOCK_METRICS, AVAILABLE_QUARTERS, formatQuarterLabel, getValuesForPeriod } from '../data/mockMetrics'
 import type { MetricSnapshot, PerformanceDirection } from '../data/mockMetrics'
 import ViewTabs from '../components/layout/ViewTabs'
 import KpiManageModal from '../components/KpiManageModal'
@@ -54,6 +56,7 @@ function isBetter(current: number, benchmark: number, direction: PerformanceDire
 }
 
 function getCardBorderClass(
+  current: number,
   metric: MetricSnapshot,
   selectedBenchmarkIds: string[]
 ): string {
@@ -63,7 +66,7 @@ function getCardBorderClass(
 
   if (values.length === 0) return ''
 
-  const betterCount = values.filter(v => isBetter(metric.current, v, metric.direction)).length
+  const betterCount = values.filter(v => isBetter(current, v, metric.direction)).length
 
   if (betterCount === values.length)  return 'border-l-4 border-l-better'
   if (betterCount === 0)              return 'border-l-4 border-l-worse'
@@ -71,6 +74,7 @@ function getCardBorderClass(
 }
 
 function getPerformanceDotClass(
+  current: number,
   metric: MetricSnapshot,
   selectedBenchmarkIds: string[]
 ): string {
@@ -80,7 +84,7 @@ function getPerformanceDotClass(
 
   if (values.length === 0) return 'bg-slate-500'
 
-  const betterCount = values.filter(v => isBetter(metric.current, v, metric.direction)).length
+  const betterCount = values.filter(v => isBetter(current, v, metric.direction)).length
 
   if (betterCount === values.length)  return 'bg-better'
   if (betterCount === 0)              return 'bg-worse'
@@ -93,14 +97,16 @@ interface KpiCardProps {
   metric: MetricSnapshot
   kpiName: string
   selectedBenchmarkIds: string[]
+  timePeriod: TimePeriod
   delay: number
 }
 
-function KpiCard({ metric, kpiName, selectedBenchmarkIds, delay }: KpiCardProps) {
-  const borderClass = getCardBorderClass(metric, selectedBenchmarkIds)
+function KpiCard({ metric, kpiName, selectedBenchmarkIds, timePeriod, delay }: KpiCardProps) {
+  const { current, prior, periodLabel } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
+  const borderClass = getCardBorderClass(current, metric, selectedBenchmarkIds)
 
   // Delta
-  const delta = metric.current - metric.prior
+  const delta = current - prior
   const deltaAbs = Math.abs(delta)
 
   let deltaGood: boolean
@@ -144,7 +150,7 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, delay }: KpiCardProps)
       {/* Middle — value + delta */}
       <div className="flex items-end gap-3">
         <span className="text-3xl font-black text-white leading-none">
-          {formatValue(metric.current, metric.format)}
+          {formatValue(current, metric.format)}
         </span>
         <div className="flex flex-col gap-0.5 pb-0.5">
           <span
@@ -153,7 +159,7 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, delay }: KpiCardProps)
             <DeltaIcon size={10} strokeWidth={2.5} />
             {formatValue(deltaAbs, metric.format)}
           </span>
-          <span className="text-[10px] text-slate-600">vs prior period</span>
+          <span className="text-[10px] text-slate-600">{periodLabel}</span>
         </div>
       </div>
 
@@ -166,7 +172,7 @@ function KpiCard({ metric, kpiName, selectedBenchmarkIds, delay }: KpiCardProps)
 
             const benchDef = BENCHMARK_DEFS.find(b => b.id === benchId)
             const label = benchDef?.name ?? benchId
-            const better = isBetter(metric.current, benchValue, metric.direction)
+            const better = isBetter(current, benchValue, metric.direction)
 
             return (
               <div key={benchId} className="flex items-center justify-between gap-2">
@@ -200,9 +206,10 @@ interface CardContentProps {
   grouped: GroupedCategory[]
   selectedBenchmarkIds: string[]
   metricsMap: Record<string, MetricSnapshot>
+  timePeriod: TimePeriod
 }
 
-function CardContent({ grouped, selectedBenchmarkIds, metricsMap }: CardContentProps) {
+function CardContent({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: CardContentProps) {
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
@@ -236,6 +243,7 @@ function CardContent({ grouped, selectedBenchmarkIds, metricsMap }: CardContentP
                     metric={metric}
                     kpiName={kpi.name}
                     selectedBenchmarkIds={selectedBenchmarkIds}
+                    timePeriod={timePeriod}
                     delay={cardDelay}
                   />
                 )
@@ -255,11 +263,12 @@ interface TableViewProps {
   selectedBenchmarkIds: string[]
   benchmarkDefs: BenchmarkDef[]
   metricsMap: Record<string, MetricSnapshot>
+  timePeriod: TimePeriod
 }
 
 type SortState = { col: string; dir: 'asc' | 'desc' }
 
-function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }: TableViewProps) {
+function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap, timePeriod }: TableViewProps) {
   const [sort, setSort] = useState<SortState>({ col: 'name', dir: 'asc' })
 
   function handleHeaderClick(col: string) {
@@ -276,18 +285,21 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }:
       const mb = metricsMap[b.id]
       if (!ma || !mb) return 0
 
+      const va = getValuesForPeriod(ma, timePeriod.endingQuarter, timePeriod.type)
+      const vb = getValuesForPeriod(mb, timePeriod.endingQuarter, timePeriod.type)
+
       let diff = 0
       if (sort.col === 'name') {
         diff = a.name.localeCompare(b.name)
       } else if (sort.col === 'current') {
-        diff = ma.current - mb.current
+        diff = va.current - vb.current
       } else if (sort.col === 'delta') {
-        diff = (ma.current - ma.prior) - (mb.current - mb.prior)
+        diff = (va.current - va.prior) - (vb.current - vb.prior)
       } else {
         // benchmark column
-        const va = ma.benchmarks[sort.col] ?? Infinity
-        const vb = mb.benchmarks[sort.col] ?? Infinity
-        diff = va - vb
+        const bva = ma.benchmarks[sort.col] ?? Infinity
+        const bvb = mb.benchmarks[sort.col] ?? Infinity
+        diff = bva - bvb
       }
 
       return sort.dir === 'asc' ? diff : -diff
@@ -371,7 +383,8 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }:
                     const metric = metricsMap[kpi.id]
                     if (!metric) return null
 
-                    const delta = metric.current - metric.prior
+                    const { current, prior, periodLabel } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
+                    const delta = current - prior
                     const deltaAbs = Math.abs(delta)
 
                     let deltaGood: boolean
@@ -390,7 +403,7 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }:
                           ? TrendingDown
                           : TrendingUp
 
-                    const dotClass = getPerformanceDotClass(metric, selectedBenchmarkIds)
+                    const dotClass = getPerformanceDotClass(current, metric, selectedBenchmarkIds)
                     const rowBg = rowIndex % 2 === 0 ? 'bg-surface' : 'bg-surface/60'
 
                     return (
@@ -408,23 +421,26 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }:
 
                         {/* Current */}
                         <td className="py-3 px-4 text-white font-semibold">
-                          {formatValue(metric.current, metric.format)}
+                          {formatValue(current, metric.format)}
                         </td>
 
                         {/* Delta */}
                         <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              metric.direction === 'neutral'
-                                ? 'bg-slate-700/60 text-slate-300'
-                                : deltaGood
-                                  ? 'bg-green-900/40 text-better'
-                                  : 'bg-red-900/40 text-worse'
-                            }`}
-                          >
-                            <DeltaIcon size={10} strokeWidth={2.5} />
-                            {formatValue(deltaAbs, metric.format)}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${
+                                metric.direction === 'neutral'
+                                  ? 'bg-slate-700/60 text-slate-300'
+                                  : deltaGood
+                                    ? 'bg-green-900/40 text-better'
+                                    : 'bg-red-900/40 text-worse'
+                              }`}
+                            >
+                              <DeltaIcon size={10} strokeWidth={2.5} />
+                              {formatValue(deltaAbs, metric.format)}
+                            </span>
+                            <span className="text-[10px] text-slate-600 px-2">{periodLabel}</span>
+                          </div>
                         </td>
 
                         {/* Benchmark columns */}
@@ -437,7 +453,7 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }:
                               </td>
                             )
                           }
-                          const better = isBetter(metric.current, benchValue, metric.direction)
+                          const better = isBetter(current, benchValue, metric.direction)
                           return (
                             <td key={benchId} className="py-3 px-4">
                               <div className="flex items-center gap-1.5">
@@ -472,12 +488,13 @@ function TableView({ grouped, selectedBenchmarkIds, benchmarkDefs, metricsMap }:
 
 // ─── TrendView ────────────────────────────────────────────────────────────────
 
-const QUARTER_LABELS = ["Q1'23", "Q2'23", "Q3'23", "Q4'23", "Q1'24", "Q2'24", "Q3'24", "Q4'24"]
+const QUARTER_LABELS = ["Q1'23", "Q2'23", "Q3'23", "Q4'23", "Q1'24", "Q2'24", "Q3'24", "Q4'24", "Q1'25", "Q2'25", "Q3'25", "Q4'25"]
 
 interface TrendViewProps {
   grouped: GroupedCategory[]
   selectedBenchmarkIds: string[]
   metricsMap: Record<string, MetricSnapshot>
+  timePeriod: TimePeriod
 }
 
 interface TrendTooltipPayload {
@@ -508,7 +525,7 @@ function TrendTooltipContent({ active, payload, format }: TrendTooltipProps) {
   )
 }
 
-function TrendView({ grouped, selectedBenchmarkIds, metricsMap }: TrendViewProps) {
+function TrendView({ grouped, selectedBenchmarkIds, metricsMap, timePeriod }: TrendViewProps) {
   return (
     <div className="px-6 py-6 space-y-8">
       {grouped.map((group, groupIndex) => {
@@ -536,6 +553,7 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap }: TrendViewProps
 
                 const cardDelay = sectionDelay + cardIndex * 0.04
                 const { trend, direction, format } = metric
+                const { current } = getValuesForPeriod(metric, timePeriod.endingQuarter, timePeriod.type)
 
                 // Determine if trend is improving overall
                 const firstVal = trend[0]
@@ -581,7 +599,7 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap }: TrendViewProps
                         {kpi.name}
                       </p>
                       <span className="text-xl font-black text-white ml-auto shrink-0">
-                        {formatValue(metric.current, format)}
+                        {formatValue(current, format)}
                       </span>
                     </div>
 
@@ -624,6 +642,65 @@ function TrendView({ grouped, selectedBenchmarkIds, metricsMap }: TrendViewProps
           </motion.section>
         )
       })}
+    </div>
+  )
+}
+
+// ─── PeriodBar ────────────────────────────────────────────────────────────────
+
+const PERIOD_TYPES: { id: PeriodType; label: string; title: string }[] = [
+  { id: '1Q',  label: 'Single Qtr',    title: 'Single quarter value'              },
+  { id: 'R12', label: 'Rolling 12M',   title: 'Average of last 4 quarters'        },
+  { id: 'YTD', label: 'YTD',           title: 'Year-to-date average'              },
+  { id: 'R36', label: 'Rolling 3Y',    title: '12-quarter average (CMS 30-day)'   },
+]
+
+interface PeriodBarProps {
+  timePeriod: TimePeriod
+  onTimePeriodChange: (updater: (prev: TimePeriod) => TimePeriod) => void
+}
+
+function PeriodBar({ timePeriod, onTimePeriodChange }: PeriodBarProps) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-2.5 border-b border-border bg-surface/40">
+      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-1">
+        Ending Period
+      </span>
+
+      {/* Quarter select */}
+      <div className="relative">
+        <select
+          value={timePeriod.endingQuarter}
+          onChange={e => onTimePeriodChange(p => ({ ...p, endingQuarter: e.target.value }))}
+          className="bg-surface-2 border border-border text-white text-xs font-medium rounded-lg px-3 py-1.5 cursor-pointer focus:outline-none focus:border-premier appearance-none pr-6"
+        >
+          {AVAILABLE_QUARTERS.map(q => (
+            <option key={q} value={q}>{formatQuarterLabel(q)}</option>
+          ))}
+        </select>
+        <ChevronDown size={12} className="text-slate-500 pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" />
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-4 bg-border mx-1" />
+
+      {/* Period type pills */}
+      <div className="flex items-center gap-0.5 bg-surface-2 rounded-lg p-0.5">
+        {PERIOD_TYPES.map(({ id: pid, label, title }) => (
+          <button
+            key={pid}
+            title={title}
+            onClick={() => onTimePeriodChange(p => ({ ...p, type: pid }))}
+            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              timePeriod.type === pid
+                ? 'bg-surface-3 text-white'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -720,6 +797,9 @@ export default function DashboardView({
   onRenameView,
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('card')
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(
+    view.timePeriod ?? DEFAULT_TIME_PERIOD
+  )
   const [isManageKpisOpen, setIsManageKpisOpen] = useState(false)
 
   // Build metrics lookup map (context-aware in future; uses flat mock data for now)
@@ -758,6 +838,9 @@ export default function DashboardView({
         onManageKpis={() => setIsManageKpisOpen(true)}
       />
 
+      {/* Period bar */}
+      <PeriodBar timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
+
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {selectedKpiDefs.length === 0 ? (
@@ -778,6 +861,7 @@ export default function DashboardView({
                 grouped={grouped}
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
                 metricsMap={metricsMap}
+                timePeriod={timePeriod}
               />
             )}
             {viewMode === 'table' && (
@@ -786,6 +870,7 @@ export default function DashboardView({
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
                 benchmarkDefs={BENCHMARK_DEFS}
                 metricsMap={metricsMap}
+                timePeriod={timePeriod}
               />
             )}
             {viewMode === 'trend' && (
@@ -793,6 +878,7 @@ export default function DashboardView({
                 grouped={grouped}
                 selectedBenchmarkIds={view.selectedBenchmarkIds}
                 metricsMap={metricsMap}
+                timePeriod={timePeriod}
               />
             )}
           </>
