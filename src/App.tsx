@@ -294,7 +294,7 @@ function AddViewModal({ onClose, onAdd, onAddShared, sharedViewCount, sharedView
                             {kpi.name}
                           </span>
                           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mt-1">
-                            {kpi.unit}
+                            {kpi.unit === '%' ? 'Percentage (%)' : kpi.unit}
                           </span>
                         </button>
                       )
