@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Search, Loader2, X } from 'lucide-react'
+import { useState } from 'react'
+import { Search, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMarketStore } from '../../store/marketStore'
 import { searchHospitals } from '../../services/cmsApi'
@@ -60,33 +60,10 @@ function SearchResultCard({ hospital }: { hospital: CmsHospital }) {
 export default function MarketSearch({ onSwitchToCompare }: MarketSearchProps) {
   const { selectedHospitals, removeHospital } = useMarketStore()
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<CmsHospital[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [searched, setSearched] = useState(false)
 
-  useEffect(() => {
-    if (query.length < 3) {
-      setResults([])
-      setSearched(false)
-      return
-    }
-    const timer = setTimeout(async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const res = await searchHospitals(query)
-        setResults(res)
-        setSearched(true)
-      } catch {
-        setError('Failed to search hospitals. Please try again.')
-        setResults([])
-      } finally {
-        setLoading(false)
-      }
-    }, 400)
-    return () => clearTimeout(timer)
-  }, [query])
+  // Synchronous local search — instant, no API call needed
+  const results: CmsHospital[] = query.trim().length >= 2 ? searchHospitals(query) : []
+  const searched = query.trim().length >= 2
 
   return (
     <motion.div
@@ -107,22 +84,16 @@ export default function MarketSearch({ onSwitchToCompare }: MarketSearchProps) {
             placeholder="Search by hospital name, city, or state..."
             className="w-full bg-surface-2 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-premier transition-colors"
           />
-          {loading && (
-            <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 animate-spin" />
-          )}
         </div>
 
-        {/* Error */}
-        {error && <p className="text-sm text-worse">{error}</p>}
-
         {/* No results */}
-        {searched && results.length === 0 && !loading && (
+        {searched && results.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">No hospitals found for "{query}"</p>
         )}
 
         {/* Hint */}
-        {!searched && !loading && query.length === 0 && (
-          <p className="text-sm text-slate-500 text-center py-8">Type at least 3 characters to search CMS hospital data</p>
+        {!searched && query.length === 0 && (
+          <p className="text-sm text-slate-500 text-center py-8">Search 5,400+ hospitals from CMS Care Compare</p>
         )}
 
         {/* Results */}
