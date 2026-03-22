@@ -28,6 +28,29 @@
     scrollbar-color: rgba(255,255,255,0.12) transparent;
   }
 
+  /* Leaflet map tile brightness — makes roads/labels pop on the dark CARTO base */
+  .leaflet-tile-pane {
+    filter: brightness(1.7) contrast(1.1) saturate(1.15);
+  }
+
+  /* Leaflet popup styling to match app theme */
+  .leaflet-popup-content-wrapper {
+    background: #0C2035 !important;
+    color: #f1f5f9 !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+  }
+  .leaflet-popup-tip {
+    background: #0C2035 !important;
+  }
+  .leaflet-popup-close-button {
+    color: #64748b !important;
+  }
+  .leaflet-popup-close-button:hover {
+    color: #f1f5f9 !important;
+  }
+
   /* Premier gradient utility */
   .premier-gradient {
     background: linear-gradient(135deg, #103454 0%, #0c2a45 100%);
