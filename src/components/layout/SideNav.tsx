@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Network, Building2, Layers, ChevronLeft, ChevronRight, Plus, Pencil, CheckSquare, LayoutDashboard } from 'lucide-react'
+import { Network, Building2, Layers, ChevronLeft, ChevronRight, Plus, Pencil, CheckSquare, LayoutDashboard, Globe } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { HEALTH_SYSTEM } from '../../data/facilities'
 import type { ViewContext } from '../../types/wizard'
@@ -12,13 +12,14 @@ interface SideNavProps {
   groups: HospitalGroup[]
   onCreateGroup: () => void
   onEditGroup: (group: HospitalGroup) => void
-  mainView?: 'dashboard' | 'tasks'
+  mainView?: 'dashboard' | 'tasks' | 'market'
   onNavigateToDashboard?: () => void
   onNavigateToTasks?: () => void
+  onNavigateToMarket?: () => void
   assignedTaskCount?: number
 }
 
-export default function SideNav({ context, onChange, groups, onCreateGroup, onEditGroup, mainView, onNavigateToDashboard, onNavigateToTasks, assignedTaskCount }: SideNavProps) {
+export default function SideNav({ context, onChange, groups, onCreateGroup, onEditGroup, mainView, onNavigateToDashboard, onNavigateToTasks, onNavigateToMarket, assignedTaskCount }: SideNavProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
 
@@ -312,8 +313,8 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
           </div>
         )}
 
-        {/* Views + Tasks nav */}
-        {(onNavigateToDashboard || onNavigateToTasks) && (
+        {/* Views + Tasks + Market nav */}
+        {(onNavigateToDashboard || onNavigateToTasks || onNavigateToMarket) && (
           <>
             <div className="h-px bg-border mx-3 my-2" />
             {isOpen ? (
@@ -351,6 +352,20 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
                     )}
                   </button>
                 )}
+                {onNavigateToMarket && (
+                  <button
+                    onClick={onNavigateToMarket}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      mainView === 'market'
+                        ? 'bg-premier-muted text-premier'
+                        : 'text-slate-400 hover:text-white hover:bg-surface-2'
+                    )}
+                  >
+                    <Globe size={15} strokeWidth={2} className="shrink-0" />
+                    <span className="truncate">Market</span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-1 px-2 pb-2">
@@ -368,23 +383,39 @@ export default function SideNav({ context, onChange, groups, onCreateGroup, onEd
                     <LayoutDashboard size={14} strokeWidth={2} />
                   </button>
                 )}
-                <button
-                  onClick={onNavigateToTasks}
-                  title="Tasks"
-                  className={cn(
-                    'relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150',
-                    mainView === 'tasks'
-                      ? 'bg-premier-muted text-premier'
-                      : 'text-slate-600 hover:text-slate-200 hover:bg-surface-2'
-                  )}
-                >
-                  <CheckSquare size={14} strokeWidth={2} />
-                  {(assignedTaskCount ?? 0) > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-premier text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                      {assignedTaskCount}
-                    </span>
-                  )}
-                </button>
+                {onNavigateToTasks && (
+                  <button
+                    onClick={onNavigateToTasks}
+                    title="Tasks"
+                    className={cn(
+                      'relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150',
+                      mainView === 'tasks'
+                        ? 'bg-premier-muted text-premier'
+                        : 'text-slate-600 hover:text-slate-200 hover:bg-surface-2'
+                    )}
+                  >
+                    <CheckSquare size={14} strokeWidth={2} />
+                    {(assignedTaskCount ?? 0) > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-premier text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {assignedTaskCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+                {onNavigateToMarket && (
+                  <button
+                    onClick={onNavigateToMarket}
+                    title="Market"
+                    className={cn(
+                      'w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150',
+                      mainView === 'market'
+                        ? 'bg-premier-muted text-premier'
+                        : 'text-slate-600 hover:text-slate-200 hover:bg-surface-2'
+                    )}
+                  >
+                    <Globe size={14} strokeWidth={2} />
+                  </button>
+                )}
               </div>
             )}
           </>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, ChevronLeft, Check, X, Users } from 'lucide-react'
 import TopBar from './components/layout/TopBar'
@@ -23,6 +23,9 @@ import type { ViewContext } from './types/wizard'
 import { DEFAULT_CONTEXT } from './types/wizard'
 import type { HospitalGroup } from './types/groups'
 import { GROUPS_STORAGE_KEY } from './types/groups'
+const MarketView = lazy(() => import('./pages/market/MarketView'))
+import { OWN_HOSPITALS_CMS } from './data/ownHospitalsCms'
+import type { CmsHospital } from './types/market'
 
 // ─── Add View Modal (wizard + shared-with-me) ────────────────────────────────
 
@@ -402,7 +405,7 @@ export default function App() {
   const views = viewsByUser[currentUserId] ?? []
 
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
-  const [mainView, setMainView] = useState<'dashboard' | 'tasks'>('dashboard')
+  const [mainView, setMainView] = useState<'dashboard' | 'tasks' | 'market'>('dashboard')
   const [createTaskKpiId, setCreateTaskKpiId] = useState<string | null | undefined>(undefined)
   const [compareModal, setCompareModal] = useState<{ kpiId: string; kpiName: string } | null>(null)
 
@@ -528,6 +531,14 @@ export default function App() {
       ? context.hospitalIds
       : []
 
+  const contextHospitals: CmsHospital[] = context.type === 'system'
+    ? OWN_HOSPITALS_CMS
+    : context.type === 'hospital'
+      ? OWN_HOSPITALS_CMS.filter(h => h.ownHospitalId === context.hospitalIds[0])
+      : context.type === 'group'
+        ? OWN_HOSPITALS_CMS.filter(h => context.hospitalIds.includes(h.ownHospitalId!))
+        : OWN_HOSPITALS_CMS
+
   return (
     <div className="flex flex-col h-screen bg-bg overflow-hidden">
       <TopBar currentUser={currentUser} onUserChange={handleUserChange} />
@@ -565,6 +576,7 @@ export default function App() {
                 mainView={mainView}
                 onNavigateToDashboard={() => setMainView('dashboard')}
                 onNavigateToTasks={() => setMainView('tasks')}
+                onNavigateToMarket={() => setMainView('market')}
                 assignedTaskCount={assignedTaskCount}
               />
               <div className="flex-1 overflow-hidden flex flex-col">
@@ -592,6 +604,15 @@ export default function App() {
                     currentUserId={currentUserId}
                     onCreateTask={handleOpenCreateTask}
                   />
+                )}
+                {mainView === 'market' && (
+                  <Suspense fallback={
+                    <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+                      Loading Market Analysis…
+                    </div>
+                  }>
+                    <MarketView contextHospitals={contextHospitals} />
+                  </Suspense>
                 )}
               </div>
             </motion.div>
