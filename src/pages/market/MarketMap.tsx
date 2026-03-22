@@ -108,8 +108,16 @@ export default function MarketMap() {
   const ownHospitals = selectedHospitals.filter(h => h.isOwn)
   const selectedIds = new Set(selectedHospitals.map(h => h.facilityId))
 
+  const PRESETS = [5, 10, 25, 50, 100]
   const [radius, setRadius] = useState(25)
+  const [customInput, setCustomInput] = useState('')
   const [center, setCenter] = useState<[number, number]>(SPRINGFIELD_IL)
+
+  function applyCustomRadius() {
+    const n = parseInt(customInput, 10)
+    if (!isNaN(n) && n > 0 && n <= 500) setRadius(n)
+    else setCustomInput('')
+  }
 
   const handleCenter = useCallback((pos: [number, number]) => setCenter(pos), [])
 
@@ -132,13 +140,13 @@ export default function MarketMap() {
       {/* Toolbar */}
       <div className="px-6 py-3 border-b border-border flex items-center gap-4 flex-wrap shrink-0">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Radius</span>
-        <div className="flex gap-1">
-          {[5, 10, 25, 50, 100].map(r => (
+        <div className="flex gap-1 items-center">
+          {PRESETS.map(r => (
             <button
               key={r}
-              onClick={() => setRadius(r)}
+              onClick={() => { setRadius(r); setCustomInput('') }}
               className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                radius === r
+                radius === r && !customInput
                   ? 'bg-premier text-white'
                   : 'text-slate-400 hover:text-white bg-surface-2'
               }`}
@@ -146,6 +154,25 @@ export default function MarketMap() {
               {r} mi
             </button>
           ))}
+          {/* Custom radius input */}
+          <div className="flex items-center gap-1 ml-1">
+            <input
+              type="number"
+              min={1}
+              max={500}
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onBlur={applyCustomRadius}
+              onKeyDown={e => e.key === 'Enter' && applyCustomRadius()}
+              placeholder="Custom"
+              className={`w-20 text-xs px-2 py-1.5 rounded-lg bg-surface-2 border transition-colors outline-none text-white placeholder-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                customInput && !PRESETS.includes(radius)
+                  ? 'border-premier text-premier'
+                  : 'border-border focus:border-premier'
+              }`}
+            />
+            <span className="text-xs text-slate-500">mi</span>
+          </div>
         </div>
         <span className="text-xs text-slate-400 ml-auto">
           {hospitalCount} hospital{hospitalCount !== 1 ? 's' : ''} within {radius} mi
