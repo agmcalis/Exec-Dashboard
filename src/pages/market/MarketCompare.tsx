@@ -143,17 +143,27 @@ export default function MarketCompare() {
     )
   }
 
-  const sorted = sortHospitals(selectedHospitals)
-  const peers = sorted.filter(h => !h.isOwn)
-  const hasPeers = peers.length > 0
+  const sorted   = sortHospitals(selectedHospitals)
+  const ownHosp  = sorted.filter(h => h.isOwn)
+  const extHosp  = sorted.filter(h => !h.isOwn)
+  const hasOwn   = ownHosp.length > 0
+  const hasExt   = extHosp.length > 0
 
-  // Compute peer group aggregates
-  const peerRating  = hasPeers ? aggRating(peers, aggMode) : null
-  const peerMort    = hasPeers ? aggTier(peers, 'mortality',   aggMode) : null
-  const peerSafety  = hasPeers ? aggTier(peers, 'safety',      aggMode) : null
-  const peerReadm   = hasPeers ? aggTier(peers, 'readmission', aggMode) : null
-  const peerExp     = hasPeers ? aggTier(peers, 'patientExp',  aggMode) : null
-  const peerTime    = hasPeers ? aggTier(peers, 'timeliness',  aggMode) : null
+  // Internal org aggregates
+  const ownRating  = hasOwn ? aggRating(ownHosp, aggMode) : null
+  const ownMort    = hasOwn ? aggTier(ownHosp, 'mortality',   aggMode) : null
+  const ownSafety  = hasOwn ? aggTier(ownHosp, 'safety',      aggMode) : null
+  const ownReadm   = hasOwn ? aggTier(ownHosp, 'readmission', aggMode) : null
+  const ownExp     = hasOwn ? aggTier(ownHosp, 'patientExp',  aggMode) : null
+  const ownTime    = hasOwn ? aggTier(ownHosp, 'timeliness',  aggMode) : null
+
+  // External peer group aggregates
+  const peerRating  = hasExt ? aggRating(extHosp, aggMode) : null
+  const peerMort    = hasExt ? aggTier(extHosp, 'mortality',   aggMode) : null
+  const peerSafety  = hasExt ? aggTier(extHosp, 'safety',      aggMode) : null
+  const peerReadm   = hasExt ? aggTier(extHosp, 'readmission', aggMode) : null
+  const peerExp     = hasExt ? aggTier(extHosp, 'patientExp',  aggMode) : null
+  const peerTime    = hasExt ? aggTier(extHosp, 'timeliness',  aggMode) : null
 
   return (
     <motion.div
@@ -180,16 +190,17 @@ export default function MarketCompare() {
         </thead>
 
         <tbody>
-          {/* ── Peer group aggregate row ── */}
-          {hasPeers && (
-            <tr className="border-b border-border bg-surface-3/60">
+          {/* ══ YOUR ORGANIZATION section ══ */}
+          {hasOwn && (<>
+            {/* Org aggregate row */}
+            <tr className="border-b border-border bg-premier-muted/20 border-l-2 border-l-premier">
               <td className="px-4 py-3">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                      Peer Group
+                    <span className="text-[9px] bg-premier-muted text-premier px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                      Your Organization
                     </span>
-                    {/* Avg / Median toggle */}
+                    {/* Avg / Median toggle — shown once, controls both groups */}
                     <div className="flex bg-surface-2 rounded-md p-0.5 gap-0.5">
                       {(['avg', 'median'] as AggMode[]).map(m => (
                         <button
@@ -205,61 +216,76 @@ export default function MarketCompare() {
                     </div>
                   </div>
                   <span className="text-xs text-slate-400 font-medium">
-                    {peers.length} selected hospital{peers.length !== 1 ? 's' : ''}
+                    {ownHosp.length} hospital{ownHosp.length !== 1 ? 's' : ''}
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-center">
-                <PeerStarCell rating={peerRating} mode={aggMode} />
-              </td>
-              <td className="px-4 py-3 text-center">
-                {peerMort && <PeerTierCell data={peerMort} />}
-              </td>
-              <td className="px-4 py-3 text-center">
-                {peerSafety && <PeerTierCell data={peerSafety} />}
-              </td>
-              <td className="px-4 py-3 text-center">
-                {peerReadm && <PeerTierCell data={peerReadm} />}
-              </td>
-              <td className="px-4 py-3 text-center">
-                {peerExp && <PeerTierCell data={peerExp} />}
-              </td>
-              <td className="px-4 py-3 text-center">
-                {peerTime && <PeerTierCell data={peerTime} />}
-              </td>
+              <td className="px-4 py-3 text-center"><PeerStarCell rating={ownRating} mode={aggMode} /></td>
+              <td className="px-4 py-3 text-center">{ownMort   && <PeerTierCell data={ownMort} />}</td>
+              <td className="px-4 py-3 text-center">{ownSafety && <PeerTierCell data={ownSafety} />}</td>
+              <td className="px-4 py-3 text-center">{ownReadm  && <PeerTierCell data={ownReadm} />}</td>
+              <td className="px-4 py-3 text-center">{ownExp    && <PeerTierCell data={ownExp} />}</td>
+              <td className="px-4 py-3 text-center">{ownTime   && <PeerTierCell data={ownTime} />}</td>
               <td />
             </tr>
-          )}
+            {/* Individual own-org rows */}
+            {ownHosp.map(h => (
+              <tr key={h.facilityId} className="border-b border-border bg-premier-muted/10 border-l-2 border-l-premier/40 hover:bg-premier-muted/20 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-white">{h.name}</span>
+                    <span className="text-xs text-slate-400">{h.city}, {h.state}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-center"><StarBadge rating={h.overallRating} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.mortality} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.safety} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.readmission} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.patientExp} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.timeliness} /></td>
+                <td />
+              </tr>
+            ))}
+          </>)}
 
-          {/* ── Individual hospital rows ── */}
-          {sorted.map(h => (
-            <tr
-              key={h.facilityId}
-              className={`border-b border-border transition-colors ${
-                h.isOwn
-                  ? 'bg-premier-muted/30 border-l-2 border-l-premier'
-                  : 'bg-surface hover:bg-surface-2'
-              }`}
-            >
+          {/* ══ EXTERNAL PEER GROUP section ══ */}
+          {hasExt && (<>
+            {/* Peer group aggregate row */}
+            <tr className="border-b border-border bg-surface-3/60">
               <td className="px-4 py-3">
-                <div className="flex flex-col gap-0.5">
-                  {h.isOwn && (
-                    <span className="text-[9px] bg-premier-muted text-premier px-1.5 py-0.5 rounded font-bold w-fit">
-                      YOUR ORG
-                    </span>
-                  )}
-                  <span className="text-sm font-medium text-white">{h.name}</span>
-                  <span className="text-xs text-slate-400">{h.city}, {h.state}</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider w-fit">
+                    External Peer Group
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">
+                    {extHosp.length} selected hospital{extHosp.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-center"><StarBadge rating={h.overallRating} /></td>
-              <td className="px-4 py-3 text-center"><TierBadge tier={h.mortality} /></td>
-              <td className="px-4 py-3 text-center"><TierBadge tier={h.safety} /></td>
-              <td className="px-4 py-3 text-center"><TierBadge tier={h.readmission} /></td>
-              <td className="px-4 py-3 text-center"><TierBadge tier={h.patientExp} /></td>
-              <td className="px-4 py-3 text-center"><TierBadge tier={h.timeliness} /></td>
-              <td className="px-4 py-3 text-center">
-                {!h.isOwn && (
+              <td className="px-4 py-3 text-center"><PeerStarCell rating={peerRating} mode={aggMode} /></td>
+              <td className="px-4 py-3 text-center">{peerMort   && <PeerTierCell data={peerMort} />}</td>
+              <td className="px-4 py-3 text-center">{peerSafety && <PeerTierCell data={peerSafety} />}</td>
+              <td className="px-4 py-3 text-center">{peerReadm  && <PeerTierCell data={peerReadm} />}</td>
+              <td className="px-4 py-3 text-center">{peerExp    && <PeerTierCell data={peerExp} />}</td>
+              <td className="px-4 py-3 text-center">{peerTime   && <PeerTierCell data={peerTime} />}</td>
+              <td />
+            </tr>
+            {/* Individual external rows */}
+            {extHosp.map(h => (
+              <tr key={h.facilityId} className="border-b border-border bg-surface hover:bg-surface-2 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-white">{h.name}</span>
+                    <span className="text-xs text-slate-400">{h.city}, {h.state}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-center"><StarBadge rating={h.overallRating} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.mortality} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.safety} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.readmission} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.patientExp} /></td>
+                <td className="px-4 py-3 text-center"><TierBadge tier={h.timeliness} /></td>
+                <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => removeHospital(h.facilityId)}
                     className="text-slate-500 hover:text-worse transition-colors"
@@ -267,10 +293,10 @@ export default function MarketCompare() {
                   >
                     <X size={13} />
                   </button>
-                )}
-              </td>
-            </tr>
-          ))}
+                </td>
+              </tr>
+            ))}
+          </>)}
         </tbody>
       </table>
     </motion.div>
