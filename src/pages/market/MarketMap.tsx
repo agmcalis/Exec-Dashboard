@@ -104,7 +104,7 @@ function HospitalPopup({ hospital: h, onAdd, isSelected }: HospitalPopupProps) {
 }
 
 export default function MarketMap() {
-  const { selectedHospitals, addHospital } = useMarketStore()
+  const { selectedHospitals, addHospital, addHospitals } = useMarketStore()
   const ownHospitals = selectedHospitals.filter(h => h.isOwn)
   const selectedIds = new Set(selectedHospitals.map(h => h.facilityId))
 
@@ -174,11 +174,27 @@ export default function MarketMap() {
             <span className="text-xs text-slate-500">mi</span>
           </div>
         </div>
-        <span className="text-xs text-slate-400 ml-auto">
-          {hospitalCount} hospital{hospitalCount !== 1 ? 's' : ''} within {radius} mi
-          &nbsp;·&nbsp;
-          <span className="text-slate-500">Click map to move circle</span>
-        </span>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-xs text-slate-400">
+            {hospitalCount} hospital{hospitalCount !== 1 ? 's' : ''} within {radius} mi
+            &nbsp;·&nbsp;
+            <span className="text-slate-500">Click map to move circle</span>
+          </span>
+          {/* Add all in radius */}
+          {(() => {
+            const unselected = mapHospitals.filter(h => !selectedIds.has(h.facilityId))
+            return unselected.length > 0 ? (
+              <button
+                onClick={() => addHospitals(unselected)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-premier-muted text-premier hover:bg-premier hover:text-white transition-colors border border-premier/30"
+              >
+                + Add all {unselected.length} to Compare
+              </button>
+            ) : (
+              <span className="text-xs text-slate-600 italic">All in radius added</span>
+            )
+          })()}
+        </div>
       </div>
 
       {/* Map */}
